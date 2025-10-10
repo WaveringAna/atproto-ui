@@ -30,6 +30,7 @@ export function usePdsEndpoint(did: string | undefined) {
 			return () => { cancelled = true; };
 		}
 
+		setEndpoint(undefined);
 		setLoading(true);
 		setError(undefined);
 		didCache.ensurePdsEndpoint(resolver, did)
