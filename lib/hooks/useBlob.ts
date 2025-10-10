@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDidResolution } from './useDidResolution';
 import { usePdsEndpoint } from './usePdsEndpoint';
+import { useAtProto } from '../providers/AtProtoProvider';
 
 /**
  * Status returned by {@link useBlob} containing blob URL and metadata flags.
@@ -24,6 +25,7 @@ export interface UseBlobState {
 export function useBlob(handleOrDid: string | undefined, cid: string | undefined): UseBlobState {
   const { did, error: didError, loading: didLoading } = useDidResolution(handleOrDid);
   const { endpoint, error: endpointError, loading: endpointLoading } = usePdsEndpoint(did);
+  const { blobCache } = useAtProto();
   const [state, setState] = useState<UseBlobState>({ loading: !!(handleOrDid && cid) });
   const objectUrlRef = useRef<string | undefined>(undefined);
 
@@ -75,24 +77,46 @@ export function useBlob(handleOrDid: string | undefined, cid: string | undefined
       };
     }
 
-    const controller = new AbortController();
+    const cachedBlob = blobCache.get(did, cid);
+    if (cachedBlob) {
+      const nextUrl = URL.createObjectURL(cachedBlob);
+      const prevUrl = objectUrlRef.current;
+      objectUrlRef.current = nextUrl;
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+      setState({ url: nextUrl, loading: false });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    let controller: AbortController | undefined;
+    let release: (() => void) | undefined;
 
     (async () => {
       try {
         setState(prev => ({ ...prev, loading: true, error: undefined }));
-        const res = await fetch(
-          `${endpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
-          { signal: controller.signal }
-        );
-        if (!res.ok) throw new Error(`Blob fetch failed (${res.status})`);
-        const blob = await res.blob();
+        const ensureResult = blobCache.ensure(did, cid, () => {
+          controller = new AbortController();
+          const promise = (async () => {
+            const res = await fetch(
+              `${endpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
+              { signal: controller?.signal }
+            );
+            if (!res.ok) throw new Error(`Blob fetch failed (${res.status})`);
+            return res.blob();
+          })();
+          return { promise, abort: () => controller?.abort() };
+        });
+        release = ensureResult.release;
+        const blob = await ensureResult.promise;
         const nextUrl = URL.createObjectURL(blob);
         const prevUrl = objectUrlRef.current;
         objectUrlRef.current = nextUrl;
         if (prevUrl) URL.revokeObjectURL(prevUrl);
         if (!cancelled) setState({ url: nextUrl, loading: false });
       } catch (e) {
-        if (controller.signal.aborted) return;
+        const aborted = (controller && controller.signal.aborted) || (e instanceof DOMException && e.name === 'AbortError');
+        if (aborted) return;
         clearObjectUrl();
         if (!cancelled) setState({ loading: false, error: e as Error });
       }
@@ -100,9 +124,13 @@ export function useBlob(handleOrDid: string | undefined, cid: string | undefined
 
     return () => {
       cancelled = true;
-      controller.abort();
+      release?.();
+      if (controller && controller.signal.aborted && objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = undefined;
+      }
     };
-  }, [handleOrDid, cid, did, endpoint, didLoading, endpointLoading, didError, endpointError]);
+  }, [handleOrDid, cid, did, endpoint, didLoading, endpointLoading, didError, endpointError, blobCache]);
 
   return state;
 }

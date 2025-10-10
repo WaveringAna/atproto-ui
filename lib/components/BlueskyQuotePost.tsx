@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo, type NamedExoticComponent } from 'react';
 import { BlueskyPost, type BlueskyPostRendererInjectedProps, BLUESKY_POST_COLLECTION } from './BlueskyPost';
 import { BlueskyPostRenderer } from '../renderers/BlueskyPostRenderer';
-import type { FeedPostRecord } from '../types/bluesky';
 import { parseAtUri } from '../utils/at-uri';
 
 /**
@@ -55,15 +54,22 @@ export interface BlueskyQuotePostProps {
  * @param iconPlacement - Placement location for the icon. Defaults to `'timestamp'`.
  * @returns A `BlueskyPost` element configured with an augmented renderer.
  */
-export const BlueskyQuotePost: React.FC<BlueskyQuotePostProps> = ({ did, rkey, colorScheme, renderer, fallback, loadingIndicator, showIcon = true, iconPlacement = 'timestamp' }) => {
+const BlueskyQuotePostComponent: React.FC<BlueskyQuotePostProps> = ({ did, rkey, colorScheme, renderer, fallback, loadingIndicator, showIcon = true, iconPlacement = 'timestamp' }) => {
   const BaseRenderer = renderer ?? BlueskyPostRenderer;
   const Renderer = useMemo(() => {
     const QuoteRenderer: React.FC<BlueskyPostRendererInjectedProps> = (props) => {
-      const embedNode = createQuoteEmbed(props.record, props.colorScheme ?? colorScheme);
+      const resolvedColorScheme = props.colorScheme ?? colorScheme;
+      const embedSource = props.record.embed as QuoteRecordEmbed | undefined;
+      const embedNode = useMemo(
+        () => createQuoteEmbed(embedSource, resolvedColorScheme),
+        [embedSource, resolvedColorScheme]
+      );
       return <BaseRenderer {...props} embed={embedNode} />;
     };
     QuoteRenderer.displayName = 'BlueskyQuotePostRenderer';
-    return QuoteRenderer;
+    const MemoizedQuoteRenderer = memo(QuoteRenderer);
+    MemoizedQuoteRenderer.displayName = 'BlueskyQuotePostRenderer';
+    return MemoizedQuoteRenderer;
   }, [BaseRenderer, colorScheme]);
 
   return (
@@ -80,15 +86,21 @@ export const BlueskyQuotePost: React.FC<BlueskyQuotePostProps> = ({ did, rkey, c
   );
 };
 
+BlueskyQuotePostComponent.displayName = 'BlueskyQuotePost';
+
+export const BlueskyQuotePost: NamedExoticComponent<BlueskyQuotePostProps> = memo(BlueskyQuotePostComponent);
+BlueskyQuotePost.displayName = 'BlueskyQuotePost';
+
 /**
  * Builds the quoted post embed node when the parent record contains a record embed.
  *
- * @param record - Feed post containing a possible quote reference.
+ * @param embed - Embed payload containing a possible quote reference.
  * @param colorScheme - Desired visual theme for the nested quote.
  * @returns A nested `BlueskyPost` or `null` if no compatible embed exists.
  */
-function createQuoteEmbed(record: FeedPostRecord, colorScheme?: 'light' | 'dark' | 'system') {
-  const embed = record.embed as { $type?: string; record?: { uri?: string } } | undefined;
+type QuoteRecordEmbed = { $type?: string; record?: { uri?: string } };
+
+function createQuoteEmbed(embed: QuoteRecordEmbed | undefined, colorScheme?: 'light' | 'dark' | 'system') {
   if (!embed || embed.$type !== 'app.bsky.embed.record') return null;
   const quoted = embed.record;
   const quotedUri = quoted?.uri;

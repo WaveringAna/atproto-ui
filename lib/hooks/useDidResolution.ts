@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAtProto } from '../providers/AtProtoProvider';
 
 /**
@@ -8,11 +8,17 @@ import { useAtProto } from '../providers/AtProtoProvider';
  * @returns {{ did: string | undefined; error: Error | undefined; loading: boolean }} Object containing the resolved DID, error (if any), and loading state.
  */
 export function useDidResolution(handleOrDid: string | undefined) {
-	const { resolver } = useAtProto();
+	const { resolver, didCache } = useAtProto();
 	const [did, setDid] = useState<string | undefined>();
 	const [handle, setHandle] = useState<string | undefined>();
 	const [error, setError] = useState<Error | undefined>();
 	const [loading, setLoading] = useState(false);
+
+	const normalizedInput = useMemo(() => {
+		if (!handleOrDid) return undefined;
+		const trimmed = handleOrDid.trim();
+		return trimmed || undefined;
+	}, [handleOrDid]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -22,43 +28,54 @@ export function useDidResolution(handleOrDid: string | undefined) {
 			setError(undefined);
 			setLoading(false);
 		};
-		if (!handleOrDid) {
+		if (!normalizedInput) {
 			reset();
 			return () => { cancelled = true; };
 		}
-		const input = handleOrDid.trim();
-		if (!input) {
-			reset();
-			return () => { cancelled = true; };
-		}
-		setLoading(true);
+
+		const isDid = normalizedInput.startsWith('did:');
+		const normalizedHandle = !isDid ? normalizedInput.toLowerCase() : undefined;
+		const cached = isDid
+			? didCache.getByDid(normalizedInput)
+			: didCache.getByHandle(normalizedHandle);
+
+		const initialDid = cached?.did ?? (isDid ? normalizedInput : undefined);
+		const initialHandle = cached?.handle ?? (!isDid ? normalizedHandle : undefined);
+
 		setError(undefined);
+		setDid(initialDid);
+		setHandle(initialHandle);
+
+		const needsHandleResolution = !isDid && !cached?.did;
+		const needsDocResolution = isDid && (!cached?.doc || cached.handle === undefined);
+
+		if (!needsHandleResolution && !needsDocResolution) {
+			setLoading(false);
+			return () => { cancelled = true; };
+		}
+
+		setLoading(true);
 
 		(async () => {
 			try {
-				if (input.startsWith('did:')) {
-					if (!cancelled) {
-						setDid(input);
-					}
-					try {
-						const doc = await resolver.resolveDidDoc(input);
-						const aka = doc.alsoKnownAs?.find(a => a.startsWith('at://'));
-						const derivedHandle = aka ? aka.replace('at://', '') : undefined;
-						if (!cancelled) setHandle(derivedHandle);
-					} catch {
-						if (!cancelled) setHandle(undefined);
-					}
-				} else {
-					const resolvedDid = await resolver.resolveHandle(input);
-					if (!cancelled) {
-						setDid(resolvedDid);
-						setHandle(input.toLowerCase());
-					}
+				let snapshot = cached;
+				if (!isDid && normalizedHandle && needsHandleResolution) {
+					snapshot = await didCache.ensureHandle(resolver, normalizedHandle);
+				}
+
+				if (isDid) {
+					snapshot = await didCache.ensureDidDoc(resolver, normalizedInput);
+				}
+
+				if (!cancelled) {
+					const resolvedDid = snapshot?.did ?? (isDid ? normalizedInput : undefined);
+					const resolvedHandle = snapshot?.handle ?? (!isDid ? normalizedHandle : undefined);
+					setDid(resolvedDid);
+					setHandle(resolvedHandle);
+					setError(undefined);
 				}
 			} catch (e) {
 				if (!cancelled) {
-					setDid(undefined);
-					setHandle(undefined);
 					setError(e as Error);
 				}
 			} finally {
@@ -67,7 +84,7 @@ export function useDidResolution(handleOrDid: string | undefined) {
 		})();
 
 		return () => { cancelled = true; };
-	}, [handleOrDid, resolver]);
+	}, [normalizedInput, resolver, didCache]);
 
 	return { did, handle, error, loading };
 }

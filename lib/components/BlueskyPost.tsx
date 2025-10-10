@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AtProtoRecord } from '../core/AtProtoRecord';
 import { BlueskyPostRenderer } from '../renderers/BlueskyPostRenderer';
 import type { FeedPostRecord, ProfileRecord } from '../types/bluesky';
@@ -121,7 +121,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did: handleOrDid, rkey
   const repoIdentifier = resolvedDid ?? handleOrDid;
   const { record: profile } = useAtProtoRecord<ProfileRecord>({ did: repoIdentifier, collection: BLUESKY_PROFILE_COLLECTION, rkey: 'self' });
   const avatarCid = getAvatarCid(profile);
-  const { url: avatarUrl } = useBlob(repoIdentifier, avatarCid);
 
   const Comp: React.ComponentType<BlueskyPostRendererInjectedProps> = renderer ?? ((props) => <BlueskyPostRenderer {...props} />);
 
@@ -136,21 +135,29 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did: handleOrDid, rkey
 
   const atUri = resolvedDid ? `at://${resolvedDid}/${BLUESKY_POST_COLLECTION}/${rkey}` : undefined;
 
-  const Wrapped: React.FC<{ record: FeedPostRecord; loading: boolean; error?: Error }> = (props) => (
-    <Comp
-      {...props}
-  authorHandle={authorHandle}
-  authorDid={repoIdentifier}
-      avatarUrl={avatarUrl}
-      colorScheme={colorScheme}
-      iconPlacement={iconPlacement}
-      showIcon={showIcon}
-      atUri={atUri}
-    />
-  );
+  const Wrapped = useMemo(() => {
+    const WrappedComponent: React.FC<{ record: FeedPostRecord; loading: boolean; error?: Error }> = (props) => {
+      const { url: avatarUrl } = useBlob(repoIdentifier, avatarCid);
+      return (
+        <Comp
+          {...props}
+          authorHandle={authorHandle}
+          authorDid={repoIdentifier}
+          avatarUrl={avatarUrl}
+          colorScheme={colorScheme}
+          iconPlacement={iconPlacement}
+          showIcon={showIcon}
+          atUri={atUri}
+        />
+      );
+    };
+    WrappedComponent.displayName = 'BlueskyPostWrappedRenderer';
+    return WrappedComponent;
+  }, [Comp, repoIdentifier, avatarCid, authorHandle, colorScheme, iconPlacement, showIcon, atUri]);
+
   return (
     <AtProtoRecord<FeedPostRecord>
-  did={repoIdentifier}
+      did={repoIdentifier}
       collection={BLUESKY_POST_COLLECTION}
       rkey={rkey}
       renderer={Wrapped}
