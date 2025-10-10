@@ -72,15 +72,19 @@ export function usePaginatedRecords<T>({ did: handleOrDid, collection, limit = 5
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const inFlight = useRef<Set<string>>(new Set());
+  const requestSeq = useRef(0);
 
   const resetState = useCallback(() => {
     setPages([]);
     setPageIndex(0);
     setError(undefined);
+    inFlight.current.clear();
+    requestSeq.current += 1;
   }, []);
 
   const fetchPage = useCallback(async (cursor: string | undefined, targetIndex: number, mode: 'active' | 'prefetch') => {
     if (!did || !endpoint) return;
+    const token = requestSeq.current;
     const key = `${targetIndex}:${cursor ?? 'start'}`;
     if (inFlight.current.has(key)) return;
     inFlight.current.add(key);
@@ -111,12 +115,15 @@ export function usePaginatedRecords<T>({ did: handleOrDid, collection, limit = 5
         rkey: item.rkey ?? extractRkey(item.uri),
         value: item.value
       }));
+      if (token !== requestSeq.current) {
+        return nextCursor;
+      }
+      if (mode === 'active') setPageIndex(targetIndex);
       setPages(prev => {
         const next = [...prev];
         next[targetIndex] = { records: mapped, cursor: nextCursor };
         return next;
       });
-      if (mode === 'active') setPageIndex(targetIndex);
       return nextCursor;
     } catch (e) {
       if (mode === 'active') setError(e as Error);
@@ -150,6 +157,7 @@ export function usePaginatedRecords<T>({ did: handleOrDid, collection, limit = 5
     }
 
     if (resolvingDid || resolvingEndpoint || !did || !endpoint) {
+      resetState();
       setLoading(true);
       setError(undefined);
       return;
