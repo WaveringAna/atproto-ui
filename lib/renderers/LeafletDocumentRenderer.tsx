@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { useColorScheme, type ColorSchemePreference } from '../hooks/useColorScheme';
-import { useDidHandle } from '../hooks/useDidHandle';
+import { useDidResolution } from '../hooks/useDidResolution';
 import { useBlob } from '../hooks/useBlob';
 import { parseAtUri, formatDidForLabel, toBlueskyPostUrl, leafletRkeyUrl, normalizeLeafletBasePath } from '../utils/at-uri';
 import { BlueskyPost } from '../components/BlueskyPost';
@@ -49,7 +49,7 @@ export const LeafletDocumentRenderer: React.FC<LeafletDocumentRendererProps> = (
     const parsed = parseAtUri(postRefUri);
     return parsed ? toBlueskyPostUrl(parsed) : undefined;
   }, [record.postRef?.uri]);
-  const { handle: publicationHandle } = useDidHandle(publicationUri?.did);
+  const { handle: publicationHandle } = useDidResolution(publicationUri?.did);
   const fallbackAuthorLabel = useAuthorLabel(record.author, authorDid);
   const resolvedPublicationLabel = publicationRecord?.name?.trim()
     ?? (publicationHandle ? `@${publicationHandle}` : publicationUri ? formatDidForLabel(publicationUri.did) : undefined);
@@ -417,7 +417,7 @@ function alignmentValue(value?: LeafletAlignmentValue): React.CSSProperties['tex
 }
 
 function useAuthorLabel(author: string | undefined, authorDid: string | undefined): string | undefined {
-  const { handle } = useDidHandle(authorDid);
+  const { handle } = useDidResolution(authorDid);
   if (!author) return undefined;
   if (handle) return `@${handle}`;
   if (authorDid) return formatDidForLabel(authorDid);

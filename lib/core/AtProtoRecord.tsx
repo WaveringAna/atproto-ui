@@ -1,6 +1,5 @@
 import React from 'react';
 import { useAtProtoRecord } from '../hooks/useAtProtoRecord';
-import { useDidResolution } from '../hooks/useDidResolution';
 
 export interface AtProtoRecordProps<T = unknown> {
 	did: string;
@@ -11,12 +10,8 @@ export interface AtProtoRecordProps<T = unknown> {
 	loadingIndicator?: React.ReactNode;
 }
 
-export function AtProtoRecord<T = unknown>({ did: handleOrDid, collection, rkey, renderer: Renderer, fallback = null, loadingIndicator = 'Loading…' }: AtProtoRecordProps<T>) {
-	const { did, error: resolutionError, loading: resolving } = useDidResolution(handleOrDid);
-	const { record, error: recordError, loading: recordLoading } = useAtProtoRecord<T>({ did, collection, rkey });
-
-	const loading = resolving || recordLoading;
-	const error = resolutionError || recordError;
+export function AtProtoRecord<T = unknown>({ did, collection, rkey, renderer: Renderer, fallback = null, loadingIndicator = 'Loading…' }: AtProtoRecordProps<T>) {
+	const { record, error, loading } = useAtProtoRecord<T>({ did, collection, rkey });
 
 	if (error) return <>{fallback}</>;
 	if (!record) return <>{loading ? loadingIndicator : fallback}</>;

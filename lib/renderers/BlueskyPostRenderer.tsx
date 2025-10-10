@@ -2,7 +2,7 @@ import React from 'react';
 import type { FeedPostRecord } from '../types/bluesky';
 import { useColorScheme, type ColorSchemePreference } from '../hooks/useColorScheme';
 import { parseAtUri, toBlueskyPostUrl, formatDidForLabel, type ParsedAtUri } from '../utils/at-uri';
-import { useDidHandle } from '../hooks/useDidHandle';
+import { useDidResolution } from '../hooks/useDidResolution';
 import { useBlob } from '../hooks/useBlob';
 import { BlueskyIcon } from '../components/BlueskyIcon';
 
@@ -26,7 +26,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({ record
   const scheme = useColorScheme(colorScheme);
   const replyParentUri = record.reply?.parent?.uri;
   const replyTarget = replyParentUri ? parseAtUri(replyParentUri) : undefined;
-  const { handle: parentHandle, loading: parentHandleLoading } = useDidHandle(replyTarget?.did);
+  const { handle: parentHandle, loading: parentHandleLoading } = useDidResolution(replyTarget?.did);
 
   if (error) return <div style={{ padding: 8, color: 'crimson' }}>Failed to load post.</div>;
   if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { usePaginatedRecords } from '../hooks/usePaginatedRecords';
 import { useColorScheme } from '../hooks/useColorScheme';
 import type { FeedPostRecord } from '../types/bluesky';
-import { useDidHandle } from '../hooks/useDidHandle';
+import { useDidResolution } from '../hooks/useDidResolution';
 import { BlueskyIcon } from './BlueskyIcon';
 
 /**
@@ -40,7 +40,9 @@ export interface BlueskyPostListProps {
 export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({ did, limit = 5, enablePagination = true, colorScheme = 'system' }) => {
   const scheme = useColorScheme(colorScheme);
   const palette: ListPalette = scheme === 'dark' ? darkPalette : lightPalette;
-  const { handle } = useDidHandle(did);
+  const { handle: resolvedHandle, did: resolvedDid } = useDidResolution(did);
+  const actorLabel = resolvedHandle ?? formatDid(did);
+  const actorPath = resolvedHandle ?? resolvedDid ?? did;
 
   const { records, loading, error, hasNext, hasPrev, loadNext, loadPrev, pageIndex, pagesCount } = usePaginatedRecords<FeedPostRecord>({ did, collection: 'app.bsky.feed.post', limit });
 
@@ -62,7 +64,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({ did, limit = 5
           </div>
           <div style={listStyles.headerText}>
             <span style={listStyles.title}>Latest Posts</span>
-            <span style={{ ...listStyles.subtitle, ...palette.subtitle }}>@{handle ?? formatDid(did)}</span>
+            <span style={{ ...listStyles.subtitle, ...palette.subtitle }}>@{actorLabel}</span>
           </div>
         </div>
         {pageLabel && <span style={{ ...listStyles.pageMeta, ...palette.pageMeta }}>{pageLabel}</span>}
@@ -74,7 +76,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({ did, limit = 5
             key={record.rkey}
             record={record.value}
             rkey={record.rkey}
-            did={did}
+            did={actorPath}
             palette={palette}
             hasDivider={idx < records.length - 1}
           />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDidResolution } from './useDidResolution';
 import { usePdsEndpoint } from './usePdsEndpoint';
 import { createAtprotoClient } from '../utils/atproto-client';
 
@@ -23,7 +24,7 @@ interface PageData<T> {
  * Options accepted by {@link usePaginatedRecords}.
  */
 export interface UsePaginatedRecordsOptions {
-  /** DID whose repository should be queried. */
+  /** DID or handle whose repository should be queried. */
   did?: string;
   /** NSID collection containing the target records. */
   collection: string;
@@ -58,13 +59,14 @@ export interface UsePaginatedRecordsResult<T> {
 /**
  * React hook that fetches a repository collection with cursor-based pagination and prefetching.
  *
- * @param did - DID whose repository should be queried.
+ * @param did - Handle or DID whose repository should be queried.
  * @param collection - NSID collection to read from.
  * @param limit - Maximum number of records to request per page. Defaults to `5`.
  * @returns {UsePaginatedRecordsResult<T>} Object containing the current page, pagination metadata, and navigation callbacks.
  */
-export function usePaginatedRecords<T>({ did, collection, limit = 5 }: UsePaginatedRecordsOptions): UsePaginatedRecordsResult<T> {
-  const { endpoint, error: endpointError } = usePdsEndpoint(did);
+export function usePaginatedRecords<T>({ did: handleOrDid, collection, limit = 5 }: UsePaginatedRecordsOptions): UsePaginatedRecordsResult<T> {
+  const { did, error: didError, loading: resolvingDid } = useDidResolution(handleOrDid);
+  const { endpoint, error: endpointError, loading: resolvingEndpoint } = usePdsEndpoint(did);
   const [pages, setPages] = useState<PageData<T>[]>([]);
   const [pageIndex, setPageIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -126,12 +128,38 @@ export function usePaginatedRecords<T>({ did, collection, limit = 5 }: UsePagina
   }, [did, endpoint, collection, limit]);
 
   useEffect(() => {
+    if (!handleOrDid) {
+      resetState();
+      setLoading(false);
+      setError(undefined);
+      return;
+    }
+
+    if (didError) {
+      resetState();
+      setLoading(false);
+      setError(didError);
+      return;
+    }
+
+    if (endpointError) {
+      resetState();
+      setLoading(false);
+      setError(endpointError);
+      return;
+    }
+
+    if (resolvingDid || resolvingEndpoint || !did || !endpoint) {
+      setLoading(true);
+      setError(undefined);
+      return;
+    }
+
     resetState();
-    if (!did || !endpoint) return;
     fetchPage(undefined, 0, 'active').catch(() => {
       /* error handled in state */
     });
-  }, [did, endpoint, fetchPage, resetState]);
+  }, [handleOrDid, did, endpoint, fetchPage, resetState, resolvingDid, resolvingEndpoint, didError, endpointError]);
 
   const currentPage = pages[pageIndex];
   const hasNext = !!currentPage?.cursor || !!pages[pageIndex + 1];
@@ -156,7 +184,7 @@ export function usePaginatedRecords<T>({ did, collection, limit = 5 }: UsePagina
 
   const records = useMemo(() => currentPage?.records ?? [], [currentPage]);
 
-  const effectiveError = error ?? (endpointError as Error | undefined);
+  const effectiveError = error ?? (endpointError as Error | undefined) ?? (didError as Error | undefined);
 
   useEffect(() => {
     const cursor = pages[pageIndex]?.cursor;

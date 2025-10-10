@@ -19,7 +19,6 @@ export * from './hooks/useAtProtoRecord';
 export * from './hooks/useBlob';
 export * from './hooks/useBlueskyProfile';
 export * from './hooks/useColorScheme';
-export * from './hooks/useDidHandle';
 export * from './hooks/useDidResolution';
 export * from './hooks/useLatestRecord';
 export * from './hooks/usePaginatedRecords';

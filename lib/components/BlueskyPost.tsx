@@ -2,11 +2,12 @@ import React from 'react';
 import { AtProtoRecord } from '../core/AtProtoRecord';
 import { BlueskyPostRenderer } from '../renderers/BlueskyPostRenderer';
 import type { FeedPostRecord, ProfileRecord } from '../types/bluesky';
-import { useDidHandle } from '../hooks/useDidHandle';
+import { useDidResolution } from '../hooks/useDidResolution';
 import { useAtProtoRecord } from '../hooks/useAtProtoRecord';
 import { useBlob } from '../hooks/useBlob';
 import { BLUESKY_PROFILE_COLLECTION } from './BlueskyProfile';
 import { getAvatarCid } from '../utils/profile';
+import { formatDidForLabel } from '../utils/at-uri';
 
 /**
  * Props for rendering a single Bluesky post with optional customization hooks.
@@ -89,9 +90,9 @@ export type BlueskyPostRendererInjectedProps = {
    */
   showIcon?: boolean;
   /**
-   * Fully qualified AT URI of the post.
+   * Fully qualified AT URI of the post, when resolvable.
    */
-  atUri: string;
+  atUri?: string;
   /**
    * Optional override for the rendered embed contents.
    */
@@ -115,28 +116,31 @@ export const BLUESKY_POST_COLLECTION = 'app.bsky.feed.post';
  * @param iconPlacement - Determines where the icon is positioned in the rendered post. Defaults to `'timestamp'`.
  * @returns A component that renders loading/fallback states and the resolved post.
  */
-export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did, rkey, renderer, fallback, loadingIndicator, colorScheme, showIcon = true, iconPlacement = 'timestamp' }) => {
-  const { handle, loading: handleLoading } = useDidHandle(did);
-  const { record: profile } = useAtProtoRecord<ProfileRecord>({ did, collection: BLUESKY_PROFILE_COLLECTION, rkey: 'self' });
+export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did: handleOrDid, rkey, renderer, fallback, loadingIndicator, colorScheme, showIcon = true, iconPlacement = 'timestamp' }) => {
+  const { did: resolvedDid, handle, loading: resolvingIdentity, error: resolutionError } = useDidResolution(handleOrDid);
+  const repoIdentifier = resolvedDid ?? handleOrDid;
+  const { record: profile } = useAtProtoRecord<ProfileRecord>({ did: repoIdentifier, collection: BLUESKY_PROFILE_COLLECTION, rkey: 'self' });
   const avatarCid = getAvatarCid(profile);
-  const { url: avatarUrl } = useBlob(did, avatarCid);
+  const { url: avatarUrl } = useBlob(repoIdentifier, avatarCid);
 
   const Comp: React.ComponentType<BlueskyPostRendererInjectedProps> = renderer ?? ((props) => <BlueskyPostRenderer {...props} />);
 
-  if (!handle && handleLoading) {
+  const displayHandle = handle ?? (handleOrDid.startsWith('did:') ? undefined : handleOrDid);
+  const authorHandle = displayHandle ?? formatDidForLabel(resolvedDid ?? handleOrDid);
+  if (!displayHandle && resolvingIdentity) {
     return <div style={{ padding: 8 }}>Resolving handle…</div>;
   }
-  if (!handle) {
+  if (!displayHandle && resolutionError) {
     return <div style={{ padding: 8, color: 'crimson' }}>Could not resolve handle.</div>;
   }
 
-  const atUri = `at://${did}/${BLUESKY_POST_COLLECTION}/${rkey}`;
+  const atUri = resolvedDid ? `at://${resolvedDid}/${BLUESKY_POST_COLLECTION}/${rkey}` : undefined;
 
   const Wrapped: React.FC<{ record: FeedPostRecord; loading: boolean; error?: Error }> = (props) => (
     <Comp
       {...props}
-      authorHandle={handle}
-      authorDid={did}
+  authorHandle={authorHandle}
+  authorDid={repoIdentifier}
       avatarUrl={avatarUrl}
       colorScheme={colorScheme}
       iconPlacement={iconPlacement}
@@ -146,7 +150,7 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did, rkey, renderer, f
   );
   return (
     <AtProtoRecord<FeedPostRecord>
-      did={did}
+  did={repoIdentifier}
       collection={BLUESKY_POST_COLLECTION}
       rkey={rkey}
       renderer={Wrapped}

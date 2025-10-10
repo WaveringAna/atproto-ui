@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDidResolution } from './useDidResolution';
 import { usePdsEndpoint } from './usePdsEndpoint';
 
 /**
@@ -14,38 +15,94 @@ export interface UseBlobState {
 }
 
 /**
- * Fetches a blob from the DID's PDS, exposes it as an object URL, and cleans up on unmount.
+ * Fetches a blob from the DID's PDS (resolving handles when needed), exposes it as an object URL, and cleans up on unmount.
  *
- * @param did - DID whose PDS hosts the blob.
+ * @param handleOrDid - Bluesky handle or DID whose PDS hosts the blob.
  * @param cid - Content identifier for the desired blob.
  * @returns {UseBlobState} Object containing the object URL, loading flag, and any error.
  */
-export function useBlob(did: string | undefined, cid: string | undefined): UseBlobState {
-  const { endpoint } = usePdsEndpoint(did);
-  const [state, setState] = useState<UseBlobState>({ loading: !!(did && cid) });
+export function useBlob(handleOrDid: string | undefined, cid: string | undefined): UseBlobState {
+  const { did, error: didError, loading: didLoading } = useDidResolution(handleOrDid);
+  const { endpoint, error: endpointError, loading: endpointLoading } = usePdsEndpoint(did);
+  const [state, setState] = useState<UseBlobState>({ loading: !!(handleOrDid && cid) });
+  const objectUrlRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = undefined;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    let objectUrl: string | undefined;
-    async function run() {
-      if (!did || !cid || !endpoint) { setState({ loading: false }); return; }
-      setState(s => ({ ...s, loading: true }));
-      try {
-        const res = await fetch(`${endpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`);
-        if (!res.ok) throw new Error('Blob fetch failed');
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (!cancelled) setState({ url: objectUrl, loading: false });
-      } catch (e) {
-        if (!cancelled) setState({ error: e as Error, loading: false });
+
+    const clearObjectUrl = () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = undefined;
       }
+    };
+
+    if (!handleOrDid || !cid) {
+      clearObjectUrl();
+      setState({ loading: false });
+      return () => {
+        cancelled = true;
+      };
     }
-    run();
+
+    if (didError) {
+      clearObjectUrl();
+      setState({ loading: false, error: didError });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (endpointError) {
+      clearObjectUrl();
+      setState({ loading: false, error: endpointError });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (didLoading || endpointLoading || !did || !endpoint) {
+      setState(prev => ({ ...prev, loading: true, error: undefined }));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        setState(prev => ({ ...prev, loading: true, error: undefined }));
+        const res = await fetch(
+          `${endpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) throw new Error(`Blob fetch failed (${res.status})`);
+        const blob = await res.blob();
+        const nextUrl = URL.createObjectURL(blob);
+        const prevUrl = objectUrlRef.current;
+        objectUrlRef.current = nextUrl;
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        if (!cancelled) setState({ url: nextUrl, loading: false });
+      } catch (e) {
+        if (controller.signal.aborted) return;
+        clearObjectUrl();
+        if (!cancelled) setState({ loading: false, error: e as Error });
+      }
+    })();
+
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      controller.abort();
     };
-  }, [did, cid, endpoint]);
+  }, [handleOrDid, cid, did, endpoint, didLoading, endpointLoading, didError, endpointError]);
 
   return state;
 }

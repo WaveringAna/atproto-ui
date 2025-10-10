@@ -4,6 +4,8 @@ import { BlueskyProfileRenderer } from '../renderers/BlueskyProfileRenderer';
 import type { ProfileRecord } from '../types/bluesky';
 import { useBlob } from '../hooks/useBlob';
 import { getAvatarCid } from '../utils/profile';
+import { useDidResolution } from '../hooks/useDidResolution';
+import { formatDidForLabel } from '../utils/at-uri';
 
 /**
  * Props used to render a Bluesky actor profile record.
@@ -89,17 +91,20 @@ export const BLUESKY_PROFILE_COLLECTION = 'app.bsky.actor.profile';
  * @param colorScheme - Preferred color scheme forwarded to the renderer.
  * @returns A rendered profile component with loading/error states handled.
  */
-export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({ did, rkey = 'self', renderer, fallback, loadingIndicator, handle, colorScheme }) => {
+export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({ did: handleOrDid, rkey = 'self', renderer, fallback, loadingIndicator, handle, colorScheme }) => {
   const Component: React.ComponentType<BlueskyProfileRendererInjectedProps> = renderer ?? ((props) => <BlueskyProfileRenderer {...props} />);
+  const { did, handle: resolvedHandle } = useDidResolution(handleOrDid);
+  const repoIdentifier = did ?? handleOrDid;
+  const effectiveHandle = handle ?? resolvedHandle ?? (handleOrDid.startsWith('did:') ? formatDidForLabel(repoIdentifier) : handleOrDid);
 
   const Wrapped: React.FC<{ record: ProfileRecord; loading: boolean; error?: Error }> = (props) => {
     const avatarCid = getAvatarCid(props.record);
-    const { url: avatarUrl } = useBlob(did, avatarCid);
-    return <Component {...props} did={did} handle={handle} avatarUrl={avatarUrl} colorScheme={colorScheme} />;
+    const { url: avatarUrl } = useBlob(repoIdentifier, avatarCid);
+    return <Component {...props} did={repoIdentifier} handle={effectiveHandle} avatarUrl={avatarUrl} colorScheme={colorScheme} />;
   };
   return (
     <AtProtoRecord<ProfileRecord>
-      did={did}
+      did={repoIdentifier}
       collection={BLUESKY_PROFILE_COLLECTION}
       rkey={rkey}
       renderer={Wrapped}

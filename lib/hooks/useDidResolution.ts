@@ -10,37 +10,64 @@ import { useAtProto } from '../providers/AtProtoProvider';
 export function useDidResolution(handleOrDid: string | undefined) {
 	const { resolver } = useAtProto();
 	const [did, setDid] = useState<string | undefined>();
+	const [handle, setHandle] = useState<string | undefined>();
 	const [error, setError] = useState<Error | undefined>();
 	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
-		if (!handleOrDid) {
+		const reset = () => {
 			setDid(undefined);
+			setHandle(undefined);
+			setError(undefined);
 			setLoading(false);
+		};
+		if (!handleOrDid) {
+			reset();
+			return () => { cancelled = true; };
+		}
+		const input = handleOrDid.trim();
+		if (!input) {
+			reset();
 			return () => { cancelled = true; };
 		}
 		setLoading(true);
 		setError(undefined);
-		const input = handleOrDid;
-		async function run() {
+
+		(async () => {
 			try {
 				if (input.startsWith('did:')) {
-					if (!cancelled) setDid(input);
+					if (!cancelled) {
+						setDid(input);
+					}
+					try {
+						const doc = await resolver.resolveDidDoc(input);
+						const aka = doc.alsoKnownAs?.find(a => a.startsWith('at://'));
+						const derivedHandle = aka ? aka.replace('at://', '') : undefined;
+						if (!cancelled) setHandle(derivedHandle);
+					} catch {
+						if (!cancelled) setHandle(undefined);
+					}
 				} else {
-					const resolved = await resolver.resolveHandle(input);
-					if (!cancelled) setDid(resolved);
+					const resolvedDid = await resolver.resolveHandle(input);
+					if (!cancelled) {
+						setDid(resolvedDid);
+						setHandle(input.toLowerCase());
+					}
 				}
 			} catch (e) {
-				if (!cancelled) setError(e as Error);
-				if (!cancelled) setDid(undefined);
+				if (!cancelled) {
+					setDid(undefined);
+					setHandle(undefined);
+					setError(e as Error);
+				}
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
-		}
-		run();
+		})();
+
 		return () => { cancelled = true; };
 	}, [handleOrDid, resolver]);
 
-	return { did, error, loading };
+	return { did, handle, error, loading };
 }
