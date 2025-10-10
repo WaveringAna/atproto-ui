@@ -1,0 +1,120 @@
+:root {
+  --hljs-foreground: #1f2328;
+  --hljs-background: transparent;
+  --hljs-comment: #6e7781;
+  --hljs-keyword: #cf222e;
+  --hljs-attr: #0550ae;
+  --hljs-string: #0a3069;
+  --hljs-title: #24292f;
+  --hljs-number: #953800;
+  --hljs-addition: #116329;
+  --hljs-deletion: #cf222e;
+}
+
+:root[data-color-scheme='light'],
+[data-color-scheme='light'] {
+  --hljs-foreground: #1f2328;
+  --hljs-background: rgba(15, 23, 42, 0.03);
+  --hljs-comment: #6e7781;
+  --hljs-keyword: #0f59d1;
+  --hljs-attr: #1d4ed8;
+  --hljs-string: #0f766e;
+  --hljs-title: #1f2937;
+  --hljs-number: #b45309;
+  --hljs-addition: #15803d;
+  --hljs-deletion: #dc2626;
+}
+
+:root[data-color-scheme='dark'],
+[data-color-scheme='dark'] {
+  --hljs-foreground: #c9d1d9;
+  --hljs-background: rgba(8, 16, 32, 0.55);
+  --hljs-comment: #8b949e;
+  --hljs-keyword: #ff7b72;
+  --hljs-attr: #79c0ff;
+  --hljs-string: #a5d6ff;
+  --hljs-title: #d2a8ff;
+  --hljs-number: #ffa657;
+  --hljs-addition: #1a7f37;
+  --hljs-deletion: #ff7b72;
+}
+
+:root:not([data-color-scheme]),
+[data-color-scheme]:not([data-color-scheme='light']):not([data-color-scheme='dark']) {
+  --hljs-foreground: #1f2328;
+  --hljs-background: transparent;
+  --hljs-comment: #6e7781;
+  --hljs-keyword: #cf222e;
+  --hljs-attr: #0550ae;
+  --hljs-string: #0a3069;
+  --hljs-title: #24292f;
+  --hljs-number: #953800;
+  --hljs-addition: #116329;
+  --hljs-deletion: #cf222e;
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0;
+  background: var(--hljs-background);
+  color: var(--hljs-foreground);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+  color: var(--hljs-keyword);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-built_in,
+.hljs-link,
+.hljs-meta,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--hljs-attr);
+}
+
+.hljs-number,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-title,
+.hljs-name,
+.hljs-tag {
+  color: var(--hljs-number);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--hljs-string);
+}
+
+.hljs-type,
+.hljs-class .hljs-title {
+  color: var(--hljs-title);
+  font-weight: 600;
+}
+
+.hljs-deletion {
+  color: var(--hljs-deletion);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
