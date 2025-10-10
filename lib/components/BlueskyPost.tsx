@@ -126,13 +126,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did: handleOrDid, rkey
 
   const displayHandle = handle ?? (handleOrDid.startsWith('did:') ? undefined : handleOrDid);
   const authorHandle = displayHandle ?? formatDidForLabel(resolvedDid ?? handleOrDid);
-  if (!displayHandle && resolvingIdentity) {
-    return <div style={{ padding: 8 }}>Resolving handle…</div>;
-  }
-  if (!displayHandle && resolutionError) {
-    return <div style={{ padding: 8, color: 'crimson' }}>Could not resolve handle.</div>;
-  }
-
   const atUri = resolvedDid ? `at://${resolvedDid}/${BLUESKY_POST_COLLECTION}/${rkey}` : undefined;
 
   const Wrapped = useMemo(() => {
@@ -154,6 +147,13 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({ did: handleOrDid, rkey
     WrappedComponent.displayName = 'BlueskyPostWrappedRenderer';
     return WrappedComponent;
   }, [Comp, repoIdentifier, avatarCid, authorHandle, colorScheme, iconPlacement, showIcon, atUri]);
+
+  if (!displayHandle && resolvingIdentity) {
+    return <div style={{ padding: 8 }}>Resolving handle…</div>;
+  }
+  if (!displayHandle && resolutionError) {
+    return <div style={{ padding: 8, color: 'crimson' }}>Could not resolve handle.</div>;
+  }
 
   return (
     <AtProtoRecord<FeedPostRecord>
