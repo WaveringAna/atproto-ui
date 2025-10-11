@@ -1,4 +1,4 @@
-import { Client, simpleFetchHandler } from '@atcute/client';
+import { Client, simpleFetchHandler, type FetchHandler } from '@atcute/client';
 import { CompositeDidDocumentResolver, PlcDidDocumentResolver, WebDidDocumentResolver, XrpcHandleResolver } from '@atcute/identity-resolver';
 import type { DidDocument } from '@atcute/identity';
 import type { Did, Handle } from '@atcute/lexicons/syntax';
@@ -18,6 +18,8 @@ const SUPPORTED_DID_METHODS = ['plc', 'web'] as const;
 type SupportedDidMethod = (typeof SUPPORTED_DID_METHODS)[number];
 type SupportedDid = Did<SupportedDidMethod>;
 
+export const SLINGSHOT_BASE_URL = 'https://slingshot.microcosm.blue';
+
 export const normalizeBaseUrl = (input: string): string => {
   const trimmed = input.trim();
   if (!trimmed) throw new Error('Service URL cannot be empty');
@@ -31,16 +33,17 @@ export class ServiceResolver {
   private plc: string;
   private didResolver: CompositeDidDocumentResolver<SupportedDidMethod>;
   private handleResolver: XrpcHandleResolver;
+  private fetchImpl: typeof fetch;
   constructor(opts: ServiceResolverOptions = {}) {
     const plcSource = opts.plcDirectory && opts.plcDirectory.trim() ? opts.plcDirectory : DEFAULT_PLC;
     const identitySource = opts.identityService && opts.identityService.trim() ? opts.identityService : DEFAULT_IDENTITY_SERVICE;
     this.plc = normalizeBaseUrl(plcSource);
     const identityBase = normalizeBaseUrl(identitySource);
-    const fetchImpl = opts.fetch ?? fetch;
-    const plcResolver = new PlcDidDocumentResolver({ apiUrl: this.plc, fetch: fetchImpl });
-    const webResolver = new WebDidDocumentResolver({ fetch: fetchImpl });
+  this.fetchImpl = bindFetch(opts.fetch);
+    const plcResolver = new PlcDidDocumentResolver({ apiUrl: this.plc, fetch: this.fetchImpl });
+    const webResolver = new WebDidDocumentResolver({ fetch: this.fetchImpl });
     this.didResolver = new CompositeDidDocumentResolver({ methods: { plc: plcResolver, web: webResolver } });
-    this.handleResolver = new XrpcHandleResolver({ serviceUrl: identityBase, fetch: fetchImpl });
+    this.handleResolver = new XrpcHandleResolver({ serviceUrl: identityBase, fetch: this.fetchImpl });
   }
 
   async resolveDidDoc(did: string): Promise<DidDocument> {
@@ -66,25 +69,110 @@ export class ServiceResolver {
   async resolveHandle(handle: string): Promise<string> {
     const normalized = handle.trim().toLowerCase();
     if (!normalized) throw new Error('Handle cannot be empty');
-    return this.handleResolver.resolve(normalized as Handle);
+    let slingshotError: Error | undefined;
+    try {
+      const url = new URL('/xrpc/com.atproto.identity.resolveHandle', SLINGSHOT_BASE_URL);
+      url.searchParams.set('handle', normalized);
+      const response = await this.fetchImpl(url);
+      if (response.ok) {
+        const payload = await response.json() as { did?: string } | null;
+        if (payload?.did) {
+          console.info('[slingshot] resolveHandle cache hit', { handle: normalized });
+          return payload.did;
+        }
+        slingshotError = new Error('Slingshot resolveHandle response missing DID');
+        console.warn('[slingshot] resolveHandle payload missing DID; falling back', { handle: normalized });
+      } else {
+        slingshotError = new Error(`Slingshot resolveHandle failed with status ${response.status}`);
+        const body = response.body;
+        if (body) {
+          body.cancel().catch(() => {});
+        }
+        console.info('[slingshot] resolveHandle cache miss', { handle: normalized, status: response.status });
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') throw err;
+      slingshotError = err instanceof Error ? err : new Error(String(err));
+      console.warn('[slingshot] resolveHandle error; falling back to identity service', { handle: normalized, error: slingshotError });
+    }
+
+    try {
+      const did = await this.handleResolver.resolve(normalized as Handle);
+      if (slingshotError) {
+        console.info('[slingshot] resolveHandle fallback succeeded', { handle: normalized });
+      }
+      return did;
+    } catch (err) {
+      if (slingshotError && err instanceof Error) {
+        const prior = err.message;
+        err.message = `${prior}; Slingshot resolveHandle failed: ${slingshotError.message}`;
+        if (slingshotError) {
+          console.warn('[slingshot] resolveHandle fallback failed', { handle: normalized, error: slingshotError });
+        }
+      }
+      throw err;
+    }
   }
 }
 
 export interface CreateClientOptions extends ServiceResolverOptions {
-	did?: string; // optional to create a DID-scoped client
-	service?: string; // override service base url
+  did?: string; // optional to create a DID-scoped client
+  service?: string; // override service base url
 }
 
 export async function createAtprotoClient(opts: CreateClientOptions = {}) {
-	let service = opts.service;
-	const resolver = new ServiceResolver(opts);
-	if (!service && opts.did) {
-		service = await resolver.pdsEndpointForDid(opts.did);
-	}
+  const fetchImpl = bindFetch(opts.fetch);
+  let service = opts.service;
+  const resolver = new ServiceResolver({ ...opts, fetch: fetchImpl });
+  if (!service && opts.did) {
+    service = await resolver.pdsEndpointForDid(opts.did);
+  }
   if (!service) throw new Error('service or did required');
-  const handler = simpleFetchHandler({ service: normalizeBaseUrl(service) });
-	const rpc = new Client({ handler });
-	return { rpc, service, resolver };
+  const normalizedService = normalizeBaseUrl(service);
+  const handler = createSlingshotAwareHandler(normalizedService, fetchImpl);
+  const rpc = new Client({ handler });
+  return { rpc, service: normalizedService, resolver };
 }
 
 export type AtprotoClient = Awaited<ReturnType<typeof createAtprotoClient>>['rpc'];
+
+const SLINGSHOT_RETRY_PATHS = [
+  '/xrpc/com.atproto.repo.getRecord',
+  '/xrpc/com.atproto.identity.resolveHandle',
+];
+
+function createSlingshotAwareHandler(service: string, fetchImpl: typeof fetch): FetchHandler {
+  const primary = simpleFetchHandler({ service, fetch: fetchImpl });
+  const slingshot = simpleFetchHandler({ service: SLINGSHOT_BASE_URL, fetch: fetchImpl });
+  return async (pathname, init) => {
+    const matched = SLINGSHOT_RETRY_PATHS.find(candidate => pathname === candidate || pathname.startsWith(`${candidate}?`));
+    if (matched) {
+      try {
+        const slingshotResponse = await slingshot(pathname, init);
+        if (slingshotResponse.ok) {
+          console.info(`[slingshot] cache hit for ${matched}`);
+          return slingshotResponse;
+        }
+        const body = slingshotResponse.body;
+        if (body) {
+          body.cancel().catch(() => {});
+        }
+        console.info(`[slingshot] cache miss ${slingshotResponse.status} for ${matched}, falling back to ${service}`);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw err;
+        }
+        console.warn(`[slingshot] fetch error for ${matched}, falling back to ${service}`, err);
+      }
+    }
+    return primary(pathname, init);
+  };
+}
+
+function bindFetch(fetchImpl?: typeof fetch): typeof fetch {
+  const impl = fetchImpl ?? globalThis.fetch;
+  if (typeof impl !== 'function') {
+    throw new Error('fetch implementation not available');
+  }
+  return impl.bind(globalThis);
+}

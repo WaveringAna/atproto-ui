@@ -111,7 +111,7 @@ function resolveCanonicalUrl(record: LeafletDocumentRecord, did: string, rkey: s
     const href = parsed ? toBlueskyPostUrl(parsed) : undefined;
     if (href) return href;
   }
-  return `https://bsky.app/leaflet/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
+  return `at://${encodeURIComponent(did)}/${LEAFLET_DOCUMENT_COLLECTION}/${encodeURIComponent(rkey)}`;
 }
 
 export default LeafletDocument;

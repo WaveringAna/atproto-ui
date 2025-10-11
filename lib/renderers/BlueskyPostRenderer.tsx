@@ -167,7 +167,8 @@ const baseStyles: Record<string, React.CSSProperties> = {
   },
   text: {
     margin: 0,
-    whiteSpace: 'pre-wrap'
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere'
   },
   facets: {
     marginTop: 8,

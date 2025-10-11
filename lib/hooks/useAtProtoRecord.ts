@@ -10,9 +10,9 @@ export interface AtProtoRecordKey {
     /** Repository DID (or handle prior to resolution) containing the record. */
     did?: string;
     /** NSID collection in which the record resides. */
-    collection: string;
+    collection?: string;
     /** Record key string uniquely identifying the record within the collection. */
-    rkey: string;
+    rkey?: string;
 }
 
 /**
@@ -48,7 +48,7 @@ export function useAtProtoRecord<T = unknown>({ did: handleOrDid, collection, rk
             setState(prev => ({ ...prev, ...next }));
         };
 
-        if (!handleOrDid) {
+        if (!handleOrDid || !collection || !rkey) {
             assignState({ loading: false, record: undefined, error: undefined });
             return () => { cancelled = true; };
         }
@@ -85,7 +85,8 @@ export function useAtProtoRecord<T = unknown>({ did: handleOrDid, collection, rk
                 const record = (res.data as { value: T }).value;
                 assignState({ record, loading: false });
             } catch (e) {
-                assignState({ error: e as Error, loading: false });
+                const err = e instanceof Error ? e : new Error(String(e));
+                assignState({ error: err, loading: false });
             }
         })();
 

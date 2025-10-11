@@ -44,7 +44,13 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({ did, limit = 5
   const actorLabel = resolvedHandle ?? formatDid(did);
   const actorPath = resolvedHandle ?? resolvedDid ?? did;
 
-  const { records, loading, error, hasNext, hasPrev, loadNext, loadPrev, pageIndex, pagesCount } = usePaginatedRecords<FeedPostRecord>({ did, collection: 'app.bsky.feed.post', limit });
+  const { records, loading, error, hasNext, hasPrev, loadNext, loadPrev, pageIndex, pagesCount } = usePaginatedRecords<FeedPostRecord>({
+    did,
+    collection: 'app.bsky.feed.post',
+    limit,
+    preferAuthorFeed: true,
+    authorFeedActor: actorPath
+  });
 
   const pageLabel = useMemo(() => {
     const knownTotal = Math.max(pageIndex + 1, pagesCount);

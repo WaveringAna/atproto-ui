@@ -261,7 +261,7 @@ const FullDemo: React.FC = () => {
 };
 
 const LatestPostSummary: React.FC<{ did: string; handle?: string; colorScheme: ColorSchemePreference }> = ({ did, colorScheme }) => {
-    const { rkey, loading, error } = useLatestRecord<FeedPostRecord>(did, BLUESKY_POST_COLLECTION);
+    const { record, rkey, loading, error } = useLatestRecord<FeedPostRecord>(did, BLUESKY_POST_COLLECTION);
     const scheme = useColorScheme(colorScheme);
     const palette = scheme === 'dark' ? latestSummaryPalette.dark : latestSummaryPalette.light;
 
@@ -269,14 +269,16 @@ const LatestPostSummary: React.FC<{ did: string; handle?: string; colorScheme: C
     if (error) return <div style={palette.error}>Failed to load the latest post.</div>;
     if (!rkey) return <div style={palette.muted}>No posts published yet.</div>;
 
+    const atProtoProps = record
+        ? { record }
+        : { did, collection: 'app.bsky.feed.post', rkey };
+
     return (
-       <AtProtoRecord<FeedPostRecord>
-            did={did}
-            collection="app.bsky.feed.post"
-            rkey={rkey}
-            renderer={({ record }) => (
+        <AtProtoRecord<FeedPostRecord>
+            {...atProtoProps}
+            renderer={({ record: resolvedRecord }) => (
                 <article data-color-scheme={scheme}>
-                    <strong>{record?.text ?? 'Empty post'}</strong>
+                    <strong>{resolvedRecord?.text ?? 'Empty post'}</strong>
                 </article>
             )}
         />
