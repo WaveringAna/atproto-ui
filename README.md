@@ -1,6 +1,6 @@
 # atproto-ui
 
-atproto-ui is a component library and set of hooks for rendering records from the AT Protocol (Bluesky, Leaflet, and friends) in React applications. It handles DID resolution, PDS endpoint discovery, and record fetching so you can focus on UI. [Live demo](https://wisp.place/s/ana.pds.nkp.pet/ATComponents/).
+atproto-ui is a component library and set of hooks for rendering records from the AT Protocol (Bluesky, Leaflet, and friends) in React applications. It handles DID resolution, PDS endpoint discovery, and record fetching so you can focus on UI. [Live demo](https://atproto-ui.wisp.place).
 
 ## Screenshots
 
