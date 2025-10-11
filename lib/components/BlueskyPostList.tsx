@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { usePaginatedRecords } from '../hooks/usePaginatedRecords';
+import { usePaginatedRecords, type AuthorFeedReason, type ReplyParentInfo } from '../hooks/usePaginatedRecords';
 import { useColorScheme } from '../hooks/useColorScheme';
 import type { FeedPostRecord } from '../types/bluesky';
 import { useDidResolution } from '../hooks/useDidResolution';
 import { BlueskyIcon } from './BlueskyIcon';
+import { parseAtUri } from '../utils/at-uri';
 
 /**
  * Options for rendering a paginated list of Bluesky posts.
@@ -83,6 +84,8 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({ did, limit = 5
             record={record.value}
             rkey={record.rkey}
             did={actorPath}
+            reason={record.reason}
+            replyParent={record.replyParent}
             palette={palette}
             hasDivider={idx < records.length - 1}
           />
@@ -134,18 +137,31 @@ interface ListRowProps {
   record: FeedPostRecord;
   rkey: string;
   did: string;
+  reason?: AuthorFeedReason;
+  replyParent?: ReplyParentInfo;
   palette: ListPalette;
   hasDivider: boolean;
 }
 
-const ListRow: React.FC<ListRowProps> = ({ record, rkey, did, palette, hasDivider }) => {
+const ListRow: React.FC<ListRowProps> = ({ record, rkey, did, reason, replyParent, palette, hasDivider }) => {
   const text = record.text?.trim() ?? '';
   const relative = record.createdAt ? formatRelativeTime(record.createdAt) : undefined;
   const absolute = record.createdAt ? new Date(record.createdAt).toLocaleString() : undefined;
   const href = `https://bsky.app/profile/${did}/post/${rkey}`;
+  const repostLabel = reason?.$type === 'app.bsky.feed.defs#reasonRepost'
+    ? `${formatActor(reason.by) ?? 'Someone'} reposted`
+    : undefined;
+  const parentUri = replyParent?.uri ?? record.reply?.parent?.uri;
+  const parentDid = replyParent?.author?.did ?? (parentUri ? parseAtUri(parentUri)?.did : undefined);
+  const { handle: resolvedReplyHandle } = useDidResolution(
+    replyParent?.author?.handle ? undefined : parentDid
+  );
+  const replyLabel = formatReplyTarget(parentUri, replyParent, resolvedReplyHandle);
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" style={{ ...listStyles.row, ...palette.row, borderBottom: hasDivider ? `1px solid ${palette.divider}` : 'none' }}>
+      {repostLabel && <span style={{ ...listStyles.rowMeta, ...palette.rowMeta }}>{repostLabel}</span>}
+      {replyLabel && <span style={{ ...listStyles.rowMeta, ...palette.rowMeta }}>{replyLabel}</span>}
       {relative && (
         <span style={{ ...listStyles.rowTime, ...palette.rowTime }} title={absolute}>
           {relative}
@@ -189,6 +205,7 @@ interface ListPalette {
   row: { color: string };
   rowTime: { color: string };
   rowBody: { color: string };
+  rowMeta: { color: string };
   divider: string;
   footer: { borderTopColor: string; color: string };
   navButton: { color: string; background: string };
@@ -272,6 +289,11 @@ const listStyles = {
     fontSize: 12,
     fontWeight: 500
   } satisfies React.CSSProperties,
+  rowMeta: {
+    fontSize: 12,
+    fontWeight: 500,
+    letterSpacing: '0.6px'
+  } satisfies React.CSSProperties,
   rowBody: {
     margin: 0,
     whiteSpace: 'pre-wrap',
@@ -351,6 +373,9 @@ const lightPalette: ListPalette = {
   rowBody: {
     color: '#0f172a'
   },
+  rowMeta: {
+    color: '#64748b'
+  },
   divider: '#e2e8f0',
   footer: {
     borderTopColor: '#e2e8f0',
@@ -402,6 +427,9 @@ const darkPalette: ListPalette = {
   rowBody: {
     color: '#e2e8f0'
   },
+  rowMeta: {
+    color: '#94a3b8'
+  },
   divider: '#1e293b',
   footer: {
     borderTopColor: '#1e293b',
@@ -427,3 +455,25 @@ const darkPalette: ListPalette = {
 };
 
 export default BlueskyPostList;
+
+function formatActor(actor?: { handle?: string; did?: string }) {
+  if (!actor) return undefined;
+  if (actor.handle) return `@${actor.handle}`;
+  if (actor.did) return `@${formatDid(actor.did)}`;
+  return undefined;
+}
+
+function formatReplyTarget(parentUri?: string, feedParent?: ReplyParentInfo, resolvedHandle?: string) {
+  const directHandle = feedParent?.author?.handle;
+  const handle = directHandle ?? resolvedHandle;
+  if (handle) {
+    return `Replying to @${handle}`;
+  }
+  const parentDid = feedParent?.author?.did;
+  const targetUri = feedParent?.uri ?? parentUri;
+  if (!targetUri) return undefined;
+  const parsed = parseAtUri(targetUri);
+  const did = parentDid ?? parsed?.did;
+  if (!did) return undefined;
+  return `Replying to @${formatDid(did)}`;
+}

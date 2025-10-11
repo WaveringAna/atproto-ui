@@ -13,6 +13,10 @@ export interface PaginatedRecord<T> {
   rkey: string;
   /** Raw record value. */
   value: T;
+  /** Optional feed metadata (for example, repost context). */
+  reason?: AuthorFeedReason;
+  /** Optional reply context derived from feed metadata. */
+  replyParent?: ReplyParentInfo;
 }
 
 interface PageData<T> {
@@ -83,6 +87,23 @@ export type AuthorFeedFilter =
   | 'posts_and_author_threads'
   | 'posts_with_video';
 
+export interface AuthorFeedReason {
+  $type?: string;
+  by?: {
+    handle?: string;
+    did?: string;
+  };
+  indexedAt?: string;
+}
+
+export interface ReplyParentInfo {
+  uri?: string;
+  author?: {
+    handle?: string;
+    did?: string;
+  };
+}
+
 /**
  * React hook that fetches a repository collection with cursor-based pagination and prefetching.
  *
@@ -104,7 +125,7 @@ export function usePaginatedRecords<T>({
   const { did, handle, error: didError, loading: resolvingDid } = useDidResolution(handleOrDid);
   const { endpoint, error: endpointError, loading: resolvingEndpoint } = usePdsEndpoint(did);
   const [pages, setPages] = useState<PageData<T>[]>([]);
-  const [pageIndex, setPageIndex] = useState(0);
+    const [pageIndex, setPageIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const inFlight = useRef<Set<string>>(new Set());
@@ -157,11 +178,29 @@ export function usePaginatedRecords<T>({
       if (shouldUseAuthorFeed) {
         try {
           const { rpc } = await createAtprotoClient({ service: authorFeedService ?? DEFAULT_APPVIEW_SERVICE });
-          const res = await (rpc as unknown as {
-            get: (
-              nsid: string,
-              opts: { params: Record<string, string | number | boolean | undefined> }
-            ) => Promise<{ ok: boolean; data: { feed?: Array<{ post?: { uri?: string; record?: T } }>; cursor?: string } }>;
+            const res = await (rpc as unknown as {
+              get: (
+                nsid: string,
+                opts: { params: Record<string, string | number | boolean | undefined> }
+              ) => Promise<{
+                ok: boolean;
+                data: {
+                  feed?: Array<{
+                    post?: {
+                      uri?: string;
+                      record?: T;
+                      reply?: {
+                        parent?: {
+                          uri?: string;
+                          author?: { handle?: string; did?: string };
+                        };
+                      };
+                    };
+                    reason?: AuthorFeedReason;
+                  }>;
+                  cursor?: string;
+                };
+              }>;
           }).get('app.bsky.feed.getAuthorFeed', {
             params: {
               actor: actorIdentifier,
@@ -179,7 +218,9 @@ export function usePaginatedRecords<T>({
             acc.push({
               uri: post.uri,
               rkey: extractRkey(post.uri),
-              value: post.record as T
+              value: post.record as T,
+              reason: item?.reason,
+              replyParent: post.reply?.parent
             });
             return acc;
           }, []);
