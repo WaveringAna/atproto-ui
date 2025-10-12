@@ -77,38 +77,28 @@ export class ServiceResolver {
       if (response.ok) {
         const payload = await response.json() as { did?: string } | null;
         if (payload?.did) {
-          console.info('[slingshot] resolveHandle cache hit', { handle: normalized });
           return payload.did;
         }
         slingshotError = new Error('Slingshot resolveHandle response missing DID');
-        console.warn('[slingshot] resolveHandle payload missing DID; falling back', { handle: normalized });
       } else {
         slingshotError = new Error(`Slingshot resolveHandle failed with status ${response.status}`);
         const body = response.body;
         if (body) {
           body.cancel().catch(() => {});
         }
-        console.info('[slingshot] resolveHandle cache miss', { handle: normalized, status: response.status });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') throw err;
       slingshotError = err instanceof Error ? err : new Error(String(err));
-      console.warn('[slingshot] resolveHandle error; falling back to identity service', { handle: normalized, error: slingshotError });
     }
 
     try {
       const did = await this.handleResolver.resolve(normalized as Handle);
-      if (slingshotError) {
-        console.info('[slingshot] resolveHandle fallback succeeded', { handle: normalized });
-      }
       return did;
     } catch (err) {
       if (slingshotError && err instanceof Error) {
         const prior = err.message;
         err.message = `${prior}; Slingshot resolveHandle failed: ${slingshotError.message}`;
-        if (slingshotError) {
-          console.warn('[slingshot] resolveHandle fallback failed', { handle: normalized, error: slingshotError });
-        }
       }
       throw err;
     }
@@ -150,19 +140,16 @@ function createSlingshotAwareHandler(service: string, fetchImpl: typeof fetch): 
       try {
         const slingshotResponse = await slingshot(pathname, init);
         if (slingshotResponse.ok) {
-          console.info(`[slingshot] cache hit for ${matched}`);
           return slingshotResponse;
         }
         const body = slingshotResponse.body;
         if (body) {
           body.cancel().catch(() => {});
         }
-        console.info(`[slingshot] cache miss ${slingshotResponse.status} for ${matched}, falling back to ${service}`);
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           throw err;
         }
-        console.warn(`[slingshot] fetch error for ${matched}, falling back to ${service}`, err);
       }
     }
     return primary(pathname, init);

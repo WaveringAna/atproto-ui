@@ -13,7 +13,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "declarationMap": false,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
     "sourceMap": false,
     "outDir": "./lib-dist",
     "rootDir": "./lib"

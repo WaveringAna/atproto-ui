@@ -72,14 +72,6 @@ export interface UsePaginatedRecordsResult<T> {
 
 const DEFAULT_APPVIEW_SERVICE = 'https://public.api.bsky.app';
 
-type MaybeNodeEnv = { process?: { env?: Record<string, string | undefined> } };
-
-const isNonProductionEnv = (): boolean => {
-  if (typeof globalThis === 'undefined') return false;
-  const env = (globalThis as MaybeNodeEnv).process?.env?.NODE_ENV;
-  return env ? env !== 'production' : false;
-};
-
 export type AuthorFeedFilter =
   | 'posts_with_replies'
   | 'posts_no_replies'
@@ -227,9 +219,6 @@ export function usePaginatedRecords<T>({
           nextCursor = feedCursor;
         } catch (err) {
           feedDisabledRef.current = true;
-          if (isNonProductionEnv()) {
-            console.warn('[usePaginatedRecords] Author feed unavailable, falling back to PDS', err);
-          }
         }
       }
 

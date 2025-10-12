@@ -1,6 +1,6 @@
 {
   "name": "atproto-ui",
-  "version": "0.3.1",
+  "version": "0.3.1-1",
   "type": "module",
   "description": "React components and hooks for rendering AT Protocol records.",
   "main": "./lib-dist/index.js",
@@ -12,16 +12,42 @@
       "import": "./lib-dist/index.js",
       "default": "./lib-dist/index.js"
     },
-    "./styles/highlight.css": "./lib/styles/highlight.css"
+    "./components/*": {
+      "types": "./lib-dist/components/*.d.ts",
+      "import": "./lib-dist/components/*.js",
+      "default": "./lib-dist/components/*.js"
+    },
+    "./hooks/*": {
+      "types": "./lib-dist/hooks/*.d.ts",
+      "import": "./lib-dist/hooks/*.js",
+      "default": "./lib-dist/hooks/*.js"
+    },
+    "./renderers/*": {
+      "types": "./lib-dist/renderers/*.d.ts",
+      "import": "./lib-dist/renderers/*.js",
+      "default": "./lib-dist/renderers/*.js"
+    },
+    "./providers/*": {
+      "types": "./lib-dist/providers/*.d.ts",
+      "import": "./lib-dist/providers/*.js",
+      "default": "./lib-dist/providers/*.js"
+    },
+    "./utils/*": {
+      "types": "./lib-dist/utils/*.d.ts",
+      "import": "./lib-dist/utils/*.js",
+      "default": "./lib-dist/utils/*.js"
+    },
+    "./types/*": {
+      "types": "./lib-dist/types/*.d.ts",
+      "import": "./lib-dist/types/*.js",
+      "default": "./lib-dist/types/*.js"
+    }
   },
   "files": [
     "lib-dist",
-    "lib/styles",
     "README.md"
   ],
-  "sideEffects": [
-    "./lib/styles/highlight.css"
-  ],
+  "sideEffects": false,
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
