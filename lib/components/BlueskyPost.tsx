@@ -8,7 +8,7 @@ import { useBlob } from "../hooks/useBlob";
 import { BLUESKY_PROFILE_COLLECTION } from "./BlueskyProfile";
 import { getAvatarCid } from "../utils/profile";
 import { formatDidForLabel } from "../utils/at-uri";
-import type { BlobWithCdn } from "../hooks/useBlueskyAppview";
+import { isBlobWithCdn } from "../utils/blob";
 
 /**
  * Props for rendering a single Bluesky post with optional customization hooks.
@@ -145,10 +145,9 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		collection: BLUESKY_PROFILE_COLLECTION,
 		rkey: "self",
 	});
-	// Check if the avatar has a CDN URL from the appview (preferred)
 	const avatar = profile?.avatar;
 	const avatarCdnUrl = isBlobWithCdn(avatar) ? avatar.cdnUrl : undefined;
-	const avatarCid = !avatarCdnUrl ? getAvatarCid(profile) : undefined;
+	const avatarCid = avatarCdnUrl ? undefined : getAvatarCid(profile);
 
 	const Comp: React.ComponentType<BlueskyPostRendererInjectedProps> = useMemo(
 		() => renderer ?? ((props) => <BlueskyPostRenderer {...props} />),
@@ -170,7 +169,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 			error?: Error;
 		}> = (props) => {
 			const { url: avatarUrlFromBlob } = useBlob(repoIdentifier, avatarCid);
-			// Use CDN URL from appview if available, otherwise use blob URL
 			const avatarUrl = avatarCdnUrl || avatarUrlFromBlob;
 			return (
 				<Comp
@@ -233,20 +231,5 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		/>
 	);
 };
-
-/**
- * Type guard to check if a blob has a CDN URL from appview.
- */
-function isBlobWithCdn(value: unknown): value is BlobWithCdn {
-	if (typeof value !== "object" || value === null) return false;
-	const obj = value as Record<string, unknown>;
-	return (
-		obj.$type === "blob" &&
-		typeof obj.cdnUrl === "string" &&
-		typeof obj.ref === "object" &&
-		obj.ref !== null &&
-		typeof (obj.ref as { $link?: unknown }).$link === "string"
-	);
-}
 
 export default BlueskyPost;

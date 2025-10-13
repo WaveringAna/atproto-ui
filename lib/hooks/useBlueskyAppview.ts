@@ -371,7 +371,7 @@ async function fetchFromAppview<T>(
 			params: { actor: did },
 		});
 
-		if (!res.ok) throw new Error("Appview profile request failed");
+		if (!res.ok) throw new Error(`Appview ${endpoint} request failed for ${did}`);
 
 		// The appview returns avatar/banner as CDN URLs like:
 		// https://cdn.bsky.app/img/avatar/plain/{did}/{cid}@jpeg
@@ -418,7 +418,7 @@ async function fetchFromAppview<T>(
 			params: { uri: atUri, depth: 0 },
 		});
 
-		if (!res.ok) throw new Error("Appview post thread request failed");
+		if (!res.ok) throw new Error(`Appview ${endpoint} request failed for ${atUri}`);
 
 		const post = res.data.thread?.post;
 		if (!post?.record) return undefined;
@@ -494,7 +494,7 @@ async function fetchFromSlingshot<T>(
 	rkey: string,
 ): Promise<T | undefined> {
 	const res = await callGetRecord<T>(SLINGSHOT_BASE_URL, did, collection, rkey);
-	if (!res.ok) throw new Error("Slingshot getRecord failed");
+	if (!res.ok) throw new Error(`Slingshot getRecord failed for ${did}/${collection}/${rkey}`);
 	return res.data.value;
 }
 
@@ -508,7 +508,7 @@ async function fetchFromPds<T>(
 	pdsEndpoint: string,
 ): Promise<T | undefined> {
 	const res = await callGetRecord<T>(pdsEndpoint, did, collection, rkey);
-	if (!res.ok) throw new Error("PDS getRecord failed");
+	if (!res.ok) throw new Error(`PDS getRecord failed for ${did}/${collection}/${rkey} at ${pdsEndpoint}`);
 	return res.data.value;
 }
 

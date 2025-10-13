@@ -1,5 +1,6 @@
 import { useBlueskyAppview } from "./useBlueskyAppview";
 import type { ProfileRecord } from "../types/bluesky";
+import { extractCidFromBlob } from "../utils/blob";
 
 /**
  * Minimal profile fields returned by the Bluesky actor profile endpoint.
@@ -51,31 +52,11 @@ export function useBlueskyProfile(did: string | undefined) {
 			handle: "",
 			displayName: record.displayName,
 			description: record.description,
-			avatar: extractCidFromProfileBlob(record.avatar),
-			banner: extractCidFromProfileBlob(record.banner),
+			avatar: extractCidFromBlob(record.avatar),
+			banner: extractCidFromBlob(record.banner),
 			createdAt: record.createdAt,
 		}
 		: undefined;
 
 	return { data, loading, error };
-}
-
-/**
- * Helper to extract CID from profile blob (avatar or banner).
- */
-function extractCidFromProfileBlob(blob: unknown): string | undefined {
-	if (typeof blob !== "object" || blob === null) return undefined;
-	
-	const blobObj = blob as {
-		ref?: { $link?: string };
-		cid?: string;
-	};
-	
-	if (typeof blobObj.cid === "string") return blobObj.cid;
-	if (typeof blobObj.ref === "object" && blobObj.ref !== null) {
-		const link = blobObj.ref.$link;
-		if (typeof link === "string") return link;
-	}
-	
-	return undefined;
 }

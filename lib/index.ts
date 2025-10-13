@@ -38,4 +38,5 @@ export * from "./types/leaflet";
 // Utilities
 export * from "./utils/at-uri";
 export * from "./utils/atproto-client";
+export * from "./utils/blob";
 export * from "./utils/profile";

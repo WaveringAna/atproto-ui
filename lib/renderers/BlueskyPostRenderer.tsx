@@ -13,7 +13,7 @@ import {
 import { useDidResolution } from "../hooks/useDidResolution";
 import { useBlob } from "../hooks/useBlob";
 import { BlueskyIcon } from "../components/BlueskyIcon";
-import type { BlobWithCdn } from "../hooks/useBlueskyAppview";
+import { isBlobWithCdn, extractCidFromBlob } from "../utils/blob";
 
 export interface BlueskyPostRendererProps {
 	record: FeedPostRecord;
@@ -491,12 +491,10 @@ interface PostImageProps {
 }
 
 const PostImage: React.FC<PostImageProps> = ({ image, did, scheme }) => {
-	// Check if the image has a CDN URL from the appview (preferred)
 	const imageBlob = image.image;
 	const cdnUrl = isBlobWithCdn(imageBlob) ? imageBlob.cdnUrl : undefined;
-	const cid = !cdnUrl ? extractCidFromImageBlob(imageBlob) : undefined;
+	const cid = cdnUrl ? undefined : extractCidFromBlob(imageBlob);
 	const { url: urlFromBlob, loading, error } = useBlob(did, cid);
-	// Use CDN URL from appview if available, otherwise use blob URL
 	const url = cdnUrl || urlFromBlob;
 	const alt = image.alt?.trim() || "Bluesky attachment";
 	const palette =
@@ -542,41 +540,6 @@ const PostImage: React.FC<PostImageProps> = ({ image, did, scheme }) => {
 		</figure>
 	);
 };
-
-/**
- * Type guard to check if a blob has a CDN URL from appview.
- */
-function isBlobWithCdn(value: unknown): value is BlobWithCdn {
-	if (typeof value !== "object" || value === null) return false;
-	const obj = value as Record<string, unknown>;
-	return (
-		obj.$type === "blob" &&
-		typeof obj.cdnUrl === "string" &&
-		typeof obj.ref === "object" &&
-		obj.ref !== null &&
-		typeof (obj.ref as { $link?: unknown }).$link === "string"
-	);
-}
-
-/**
- * Helper to extract CID from image blob.
- */
-function extractCidFromImageBlob(blob: unknown): string | undefined {
-	if (typeof blob !== "object" || blob === null) return undefined;
-	
-	const blobObj = blob as {
-		ref?: { $link?: string };
-		cid?: string;
-	};
-	
-	if (typeof blobObj.cid === "string") return blobObj.cid;
-	if (typeof blobObj.ref === "object" && blobObj.ref !== null) {
-		const link = blobObj.ref.$link;
-		if (typeof link === "string") return link;
-	}
-	
-	return undefined;
-}
 
 const imagesBase = {
 	container: {

@@ -48,15 +48,15 @@ export function useAtProtoRecord<T = unknown>({
 	collection,
 	rkey,
 }: AtProtoRecordKey): AtProtoRecordState<T> {
-	// Determine if this is a Bluesky collection that should use the appview
 	const isBlueskyCollection = collection?.startsWith("app.bsky.");
 	
-	// Use the three-tier fallback for Bluesky collections
+	// Always call all hooks (React rules) - conditionally use results
 	const blueskyResult = useBlueskyAppview<T>({
 		did: isBlueskyCollection ? handleOrDid : undefined,
 		collection: isBlueskyCollection ? collection : undefined,
 		rkey: isBlueskyCollection ? rkey : undefined,
 	});
+	
 	const {
 		did,
 		error: didError,
@@ -78,13 +78,6 @@ export function useAtProtoRecord<T = unknown>({
 			if (cancelled) return;
 			setState((prev) => ({ ...prev, ...next }));
 		};
-
-		// If using Bluesky appview, skip the manual fetch logic
-		if (isBlueskyCollection) {
-			return () => {
-				cancelled = true;
-			};
-		}
 
 		if (!handleOrDid || !collection || !rkey) {
 			assignState({
@@ -163,10 +156,9 @@ export function useAtProtoRecord<T = unknown>({
 		resolvingEndpoint,
 		didError,
 		endpointError,
-		isBlueskyCollection,
 	]);
 
-	// Return Bluesky appview result if it's a Bluesky collection
+	// Return Bluesky result for app.bsky.* collections
 	if (isBlueskyCollection) {
 		return {
 			record: blueskyResult.record,
