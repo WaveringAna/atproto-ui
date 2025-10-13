@@ -6,7 +6,7 @@ import React, {
 	useRef,
 } from "react";
 import { AtProtoProvider } from "../lib/providers/AtProtoProvider";
-import { AtProtoRecord } from "../lib/core/AtProtoRecord";
+
 import { TangledString } from "../lib/components/TangledString";
 import { LeafletDocument } from "../lib/components/LeafletDocument";
 import { BlueskyProfile } from "../lib/components/BlueskyProfile";
@@ -37,28 +37,21 @@ export function App() {
     );
 }`;
 
-const customComponentSnippet = `import { useLatestRecord, useColorScheme, AtProtoRecord } from 'atproto-ui';
+const prefetchedDataSnippet = `import { BlueskyPost, useLatestRecord } from 'atproto-ui';
 import type { FeedPostRecord } from 'atproto-ui';
 
-const LatestPostSummary: React.FC<{ did: string }> = ({ did }) => {
-    const scheme = useColorScheme('system');
-    const { rkey, loading, error } = useLatestRecord<FeedPostRecord>(did, 'app.bsky.feed.post');
+const LatestPostWithPrefetch: React.FC<{ did: string }> = ({ did }) => {
+    // Fetch once with the hook
+    const { record, rkey, loading } = useLatestRecord<FeedPostRecord>(
+        did, 
+        'app.bsky.feed.post'
+    );
 
     if (loading) return <span>Loading…</span>;
-    if (error || !rkey) return <span>No post yet.</span>;
+    if (!record || !rkey) return <span>No posts yet.</span>;
 
-    return (
-        <AtProtoRecord<FeedPostRecord>
-            did={did}
-            collection="app.bsky.feed.post"
-            rkey={rkey}
-            renderer={({ record }) => (
-                <article data-color-scheme={scheme}>
-                    <strong>{record?.text ?? 'Empty post'}</strong>
-                </article>
-            )}
-        />
-    );
+    // Pass prefetched record—BlueskyPost won't re-fetch it
+    return <BlueskyPost did={did} rkey={rkey} record={record} />;
 };`;
 
 const codeBlockBase: React.CSSProperties = {
@@ -219,13 +212,14 @@ const FullDemo: React.FC = () => {
 	const basicCodeRef = useRef<HTMLElement | null>(null);
 	const customCodeRef = useRef<HTMLElement | null>(null);
 
-	// Latest Bluesky post
+	// Latest Bluesky post - fetch with record for prefetch demo
 	const {
+		record: latestPostRecord,
 		rkey: latestPostRkey,
 		loading: loadingLatestPost,
 		empty: noPosts,
 		error: latestPostError,
-	} = useLatestRecord<unknown>(did, BLUESKY_POST_COLLECTION);
+	} = useLatestRecord<FeedPostRecord>(did, BLUESKY_POST_COLLECTION);
 
 	const quoteSampleDid = "did:plc:ttdrpj45ibqunmfhdsb4zdwq";
 	const quoteSampleRkey = "3m2prlq6xxc2v";
@@ -323,8 +317,11 @@ const FullDemo: React.FC = () => {
 						<div style={columnStackStyle}>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>
-									Latest Bluesky Post
+									Latest Post (Prefetched Data)
 								</h3>
+								<p style={{ fontSize: 12, color: mutedTextColor, margin: "0 0 8px" }}>
+									Using <code style={{ background: scheme === "dark" ? "#1e293b" : "#e2e8f0", padding: "2px 4px", borderRadius: 3 }}>useLatestRecord</code> to fetch once, then passing <code style={{ background: scheme === "dark" ? "#1e293b" : "#e2e8f0", padding: "2px 4px", borderRadius: 3 }}>record</code> prop—no re-fetch!
+								</p>
 								{loadingLatestPost && (
 									<div style={loadingBox}>
 										Loading latest post…
@@ -345,10 +342,11 @@ const FullDemo: React.FC = () => {
 										No posts found.
 									</div>
 								)}
-								{!loadingLatestPost && latestPostRkey && (
+								{!loadingLatestPost && latestPostRkey && latestPostRecord && (
 									<BlueskyPost
 										did={did}
 										rkey={latestPostRkey}
+										record={latestPostRecord}
 										colorScheme={colorSchemePreference}
 									/>
 								)}
@@ -392,7 +390,7 @@ const FullDemo: React.FC = () => {
 				</>
 			)}
 			<section style={{ ...panelStyle, marginTop: 32 }}>
-				<h3 style={sectionHeaderStyle}>Build your own component</h3>
+				<h3 style={sectionHeaderStyle}>Code Examples</h3>
 				<p style={{ color: mutedTextColor, margin: "4px 0 8px" }}>
 					Wrap your app with the provider once and drop the ready-made
 					components wherever you need them.
@@ -407,8 +405,7 @@ const FullDemo: React.FC = () => {
 					</code>
 				</pre>
 				<p style={{ color: mutedTextColor, margin: "16px 0 8px" }}>
-					Need to make your own component? Compose your own renderer
-					with the hooks and utilities that ship with the library.
+					Pass prefetched data to components to skip API calls—perfect for SSR or caching.
 				</p>
 				<pre style={codeBlockStyle}>
 					<code
@@ -416,68 +413,15 @@ const FullDemo: React.FC = () => {
 						className="language-tsx"
 						style={codeTextStyle}
 					>
-						{customComponentSnippet}
+						{prefetchedDataSnippet}
 					</code>
 				</pre>
-				{did && (
-					<div
-						style={{
-							marginTop: 16,
-							display: "flex",
-							flexDirection: "column",
-							gap: 12,
-						}}
-					>
-						<p style={{ color: mutedTextColor, margin: 0 }}>
-							Live example with your handle:
-						</p>
-						<LatestPostSummary
-							did={did}
-							handle={showHandle}
-							colorScheme={colorSchemePreference}
-						/>
-					</div>
-				)}
 			</section>
 		</div>
 	);
 };
 
-const LatestPostSummary: React.FC<{
-	did: string;
-	handle?: string;
-	colorScheme: ColorSchemePreference;
-}> = ({ did, colorScheme }) => {
-	const { record, rkey, loading, error } = useLatestRecord<FeedPostRecord>(
-		did,
-		BLUESKY_POST_COLLECTION,
-	);
-	const scheme = useColorScheme(colorScheme);
-	const palette =
-		scheme === "dark"
-			? latestSummaryPalette.dark
-			: latestSummaryPalette.light;
 
-	if (loading) return <div style={palette.muted}>Loading summary…</div>;
-	if (error)
-		return <div style={palette.error}>Failed to load the latest post.</div>;
-	if (!rkey) return <div style={palette.muted}>No posts published yet.</div>;
-
-	const atProtoProps = record
-		? { record }
-		: { did, collection: "app.bsky.feed.post", rkey };
-
-	return (
-		<AtProtoRecord<FeedPostRecord>
-			{...atProtoProps}
-			renderer={({ record: resolvedRecord }) => (
-				<article data-color-scheme={scheme}>
-					<strong>{resolvedRecord?.text ?? "Empty post"}</strong>
-				</article>
-			)}
-		/>
-	);
-};
 
 const sectionHeaderStyle: React.CSSProperties = {
 	margin: "4px 0",
@@ -486,87 +430,6 @@ const sectionHeaderStyle: React.CSSProperties = {
 const loadingBox: React.CSSProperties = { padding: 8 };
 const errorBox: React.CSSProperties = { padding: 8, color: "crimson" };
 const infoBox: React.CSSProperties = { padding: 8, color: "#555" };
-
-const latestSummaryPalette = {
-	light: {
-		card: {
-			border: "1px solid #e2e8f0",
-			background: "#ffffff",
-			borderRadius: 12,
-			padding: 12,
-			display: "flex",
-			flexDirection: "column",
-			gap: 8,
-		} satisfies React.CSSProperties,
-		header: {
-			display: "flex",
-			alignItems: "baseline",
-			justifyContent: "space-between",
-			gap: 12,
-			color: "#0f172a",
-		} satisfies React.CSSProperties,
-		time: {
-			fontSize: 12,
-			color: "#64748b",
-		} satisfies React.CSSProperties,
-		text: {
-			margin: 0,
-			color: "#1f2937",
-			whiteSpace: "pre-wrap",
-		} satisfies React.CSSProperties,
-		link: {
-			color: "#2563eb",
-			fontWeight: 600,
-			fontSize: 12,
-			textDecoration: "none",
-		} satisfies React.CSSProperties,
-		muted: {
-			color: "#64748b",
-		} satisfies React.CSSProperties,
-		error: {
-			color: "crimson",
-		} satisfies React.CSSProperties,
-	},
-	dark: {
-		card: {
-			border: "1px solid #1e293b",
-			background: "#0f172a",
-			borderRadius: 12,
-			padding: 12,
-			display: "flex",
-			flexDirection: "column",
-			gap: 8,
-		} satisfies React.CSSProperties,
-		header: {
-			display: "flex",
-			alignItems: "baseline",
-			justifyContent: "space-between",
-			gap: 12,
-			color: "#e2e8f0",
-		} satisfies React.CSSProperties,
-		time: {
-			fontSize: 12,
-			color: "#cbd5f5",
-		} satisfies React.CSSProperties,
-		text: {
-			margin: 0,
-			color: "#e2e8f0",
-			whiteSpace: "pre-wrap",
-		} satisfies React.CSSProperties,
-		link: {
-			color: "#38bdf8",
-			fontWeight: 600,
-			fontSize: 12,
-			textDecoration: "none",
-		} satisfies React.CSSProperties,
-		muted: {
-			color: "#94a3b8",
-		} satisfies React.CSSProperties,
-		error: {
-			color: "#f472b6",
-		} satisfies React.CSSProperties,
-	},
-} as const;
 
 export const App: React.FC = () => {
 	return (
