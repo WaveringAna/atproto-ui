@@ -135,8 +135,7 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 		);
 	};
 
-	// When record is provided, pass it directly to skip fetching
-	if (record) {
+	if (record !== undefined) {
 		return (
 			<AtProtoRecord<ProfileRecord>
 				record={record}
@@ -147,7 +146,6 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 		);
 	}
 
-	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<ProfileRecord>
 			did={repoIdentifier}

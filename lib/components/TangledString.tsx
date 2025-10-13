@@ -82,8 +82,7 @@ export const TangledString: React.FC<TangledStringProps> = ({
 		/>
 	);
 
-	// When record is provided, pass it directly to skip fetching
-	if (record) {
+	if (record !== undefined) {
 		return (
 			<AtProtoRecord<TangledStringRecord>
 				record={record}
@@ -94,7 +93,6 @@ export const TangledString: React.FC<TangledStringProps> = ({
 		);
 	}
 
-	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<TangledStringRecord>
 			did={did}

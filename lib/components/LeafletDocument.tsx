@@ -121,8 +121,7 @@ export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 		);
 	};
 
-	// When record is provided, pass it directly to skip fetching
-	if (record) {
+	if (record !== undefined) {
 		return (
 			<AtProtoRecord<LeafletDocumentRecord>
 				record={record}
@@ -133,7 +132,6 @@ export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 		);
 	}
 
-	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<LeafletDocumentRecord>
 			did={did}

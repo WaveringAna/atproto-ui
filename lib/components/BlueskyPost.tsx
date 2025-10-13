@@ -203,8 +203,8 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		);
 	}
 
-	// When record is provided, pass it directly to skip fetching
-	if (record) {
+
+	if (record !== undefined) {
 		return (
 			<AtProtoRecord<FeedPostRecord>
 				record={record}
@@ -215,7 +215,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		);
 	}
 
-	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<FeedPostRecord>
 			did={repoIdentifier}
