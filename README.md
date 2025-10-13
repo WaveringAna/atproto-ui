@@ -119,7 +119,7 @@ const LatestPostSummary: React.FC<{ did: string }> = ({ did }) => {
 };
 ```
 
-There is a [demo](https://react-ui.wisp.place) where you can see the components in live action.
+There is a [demo](https://atproto-ui.wisp.place/) where you can see the components in live action.
 
 ## Running the demo locally
 
