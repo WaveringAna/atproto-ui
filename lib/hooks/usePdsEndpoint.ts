@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useAtProto } from '../providers/AtProtoProvider';
+import { useEffect, useState } from "react";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Resolves the PDS service endpoint for a given DID and tracks loading state.
@@ -19,7 +19,9 @@ export function usePdsEndpoint(did: string | undefined) {
 			setEndpoint(undefined);
 			setError(undefined);
 			setLoading(false);
-			return () => { cancelled = true; };
+			return () => {
+				cancelled = true;
+			};
 		}
 
 		const cached = didCache.getByDid(did);
@@ -27,25 +29,30 @@ export function usePdsEndpoint(did: string | undefined) {
 			setEndpoint(cached.pdsEndpoint);
 			setError(undefined);
 			setLoading(false);
-			return () => { cancelled = true; };
+			return () => {
+				cancelled = true;
+			};
 		}
 
 		setEndpoint(undefined);
 		setLoading(true);
 		setError(undefined);
-		didCache.ensurePdsEndpoint(resolver, did)
-			.then(snapshot => {
+		didCache
+			.ensurePdsEndpoint(resolver, did)
+			.then((snapshot) => {
 				if (cancelled) return;
 				setEndpoint(snapshot.pdsEndpoint);
 			})
-			.catch(e => {
+			.catch((e) => {
 				if (cancelled) return;
 				setError(e as Error);
 			})
 			.finally(() => {
 				if (!cancelled) setLoading(false);
 			});
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [did, resolver, didCache]);
 
 	return { endpoint, error, loading };

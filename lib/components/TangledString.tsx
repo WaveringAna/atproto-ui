@@ -1,7 +1,7 @@
-import React from 'react';
-import { AtProtoRecord } from '../core/AtProtoRecord';
-import { TangledStringRenderer } from '../renderers/TangledStringRenderer';
-import type { TangledStringRecord } from '../renderers/TangledStringRenderer';
+import React from "react";
+import { AtProtoRecord } from "../core/AtProtoRecord";
+import { TangledStringRenderer } from "../renderers/TangledStringRenderer";
+import type { TangledStringRecord } from "../renderers/TangledStringRenderer";
 
 /**
  * Props for rendering Tangled String records.
@@ -18,7 +18,7 @@ export interface TangledStringProps {
 	/** Indicator node shown while data is loading. */
 	loadingIndicator?: React.ReactNode;
 	/** Preferred color scheme for theming. */
-	colorScheme?: 'light' | 'dark' | 'system';
+	colorScheme?: "light" | "dark" | "system";
 }
 
 /**
@@ -32,7 +32,7 @@ export type TangledStringRendererInjectedProps = {
 	/** Fetch error, if any. */
 	error?: Error;
 	/** Preferred color scheme for downstream components. */
-	colorScheme?: 'light' | 'dark' | 'system';
+	colorScheme?: "light" | "dark" | "system";
 	/** DID associated with the record. */
 	did: string;
 	/** Record key for the string. */
@@ -42,7 +42,7 @@ export type TangledStringRendererInjectedProps = {
 };
 
 /** NSID for Tangled String records. */
-export const TANGLED_COLLECTION = 'sh.tangled.string';
+export const TANGLED_COLLECTION = "sh.tangled.string";
 
 /**
  * Resolves a Tangled String record and renders it with optional overrides while computing a canonical link.
@@ -55,9 +55,21 @@ export const TANGLED_COLLECTION = 'sh.tangled.string';
  * @param colorScheme - Preferred color scheme for theming the renderer.
  * @returns A JSX subtree representing the Tangled String record with loading states handled.
  */
-export const TangledString: React.FC<TangledStringProps> = ({ did, rkey, renderer, fallback, loadingIndicator, colorScheme }) => {
-	const Comp: React.ComponentType<TangledStringRendererInjectedProps> = renderer ?? ((props) => <TangledStringRenderer {...props} />);
-	const Wrapped: React.FC<{ record: TangledStringRecord; loading: boolean; error?: Error }> = (props) => (
+export const TangledString: React.FC<TangledStringProps> = ({
+	did,
+	rkey,
+	renderer,
+	fallback,
+	loadingIndicator,
+	colorScheme,
+}) => {
+	const Comp: React.ComponentType<TangledStringRendererInjectedProps> =
+		renderer ?? ((props) => <TangledStringRenderer {...props} />);
+	const Wrapped: React.FC<{
+		record: TangledStringRecord;
+		loading: boolean;
+		error?: Error;
+	}> = (props) => (
 		<Comp
 			{...props}
 			colorScheme={colorScheme}

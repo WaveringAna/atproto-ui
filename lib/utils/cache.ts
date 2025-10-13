@@ -1,5 +1,5 @@
-import type { DidDocument } from '@atcute/identity';
-import { ServiceResolver } from './atproto-client';
+import type { DidDocument } from "@atcute/identity";
+import { ServiceResolver } from "./atproto-client";
 
 interface DidCacheEntry {
 	did: string;
@@ -16,19 +16,28 @@ export interface DidCacheSnapshot {
 	pdsEndpoint?: string;
 }
 
-const toSnapshot = (entry: DidCacheEntry | undefined): DidCacheSnapshot | undefined => {
+const toSnapshot = (
+	entry: DidCacheEntry | undefined,
+): DidCacheSnapshot | undefined => {
 	if (!entry) return undefined;
 	const { did, handle, doc, pdsEndpoint } = entry;
 	return { did, handle, doc, pdsEndpoint };
 };
 
-const derivePdsEndpoint = (doc: DidDocument | undefined): string | undefined => {
+const derivePdsEndpoint = (
+	doc: DidDocument | undefined,
+): string | undefined => {
 	if (!doc?.service) return undefined;
-	const svc = doc.service.find(service => service.type === 'AtprotoPersonalDataServer');
+	const svc = doc.service.find(
+		(service) => service.type === "AtprotoPersonalDataServer",
+	);
 	if (!svc) return undefined;
-	const endpoint = typeof svc.serviceEndpoint === 'string' ? svc.serviceEndpoint : undefined;
+	const endpoint =
+		typeof svc.serviceEndpoint === "string"
+			? svc.serviceEndpoint
+			: undefined;
 	if (!endpoint) return undefined;
-	return endpoint.replace(/\/$/, '');
+	return endpoint.replace(/\/$/, "");
 };
 
 export class DidCache {
@@ -48,14 +57,26 @@ export class DidCache {
 		return toSnapshot(this.byDid.get(did));
 	}
 
-	memoize(entry: { did: string; handle?: string; doc?: DidDocument; pdsEndpoint?: string }): DidCacheSnapshot {
+	memoize(entry: {
+		did: string;
+		handle?: string;
+		doc?: DidDocument;
+		pdsEndpoint?: string;
+	}): DidCacheSnapshot {
 		const did = entry.did;
 		const normalizedHandle = entry.handle?.toLowerCase();
-		const existing = this.byDid.get(did) ?? (normalizedHandle ? this.byHandle.get(normalizedHandle) : undefined);
+		const existing =
+			this.byDid.get(did) ??
+			(normalizedHandle
+				? this.byHandle.get(normalizedHandle)
+				: undefined);
 
 		const doc = entry.doc ?? existing?.doc;
 		const handle = normalizedHandle ?? existing?.handle;
-		const pdsEndpoint = entry.pdsEndpoint ?? derivePdsEndpoint(doc) ?? existing?.pdsEndpoint;
+		const pdsEndpoint =
+			entry.pdsEndpoint ??
+			derivePdsEndpoint(doc) ??
+			existing?.pdsEndpoint;
 
 		const merged: DidCacheEntry = {
 			did,
@@ -73,7 +94,10 @@ export class DidCache {
 		return toSnapshot(merged) as DidCacheSnapshot;
 	}
 
-	ensureHandle(resolver: ServiceResolver, handle: string): Promise<DidCacheSnapshot> {
+	ensureHandle(
+		resolver: ServiceResolver,
+		handle: string,
+	): Promise<DidCacheSnapshot> {
 		const normalized = handle.toLowerCase();
 		const cached = this.getByHandle(normalized);
 		if (cached?.did) return Promise.resolve(cached);
@@ -81,7 +105,7 @@ export class DidCache {
 		if (pending) return pending;
 		const promise = resolver
 			.resolveHandle(normalized)
-			.then(did => this.memoize({ did, handle: normalized }))
+			.then((did) => this.memoize({ did, handle: normalized }))
 			.finally(() => {
 				this.handlePromises.delete(normalized);
 			});
@@ -89,16 +113,22 @@ export class DidCache {
 		return promise;
 	}
 
-	ensureDidDoc(resolver: ServiceResolver, did: string): Promise<DidCacheSnapshot> {
+	ensureDidDoc(
+		resolver: ServiceResolver,
+		did: string,
+	): Promise<DidCacheSnapshot> {
 		const cached = this.getByDid(did);
-		if (cached?.doc && cached.handle !== undefined) return Promise.resolve(cached);
+		if (cached?.doc && cached.handle !== undefined)
+			return Promise.resolve(cached);
 		const pending = this.docPromises.get(did);
 		if (pending) return pending;
 		const promise = resolver
 			.resolveDidDoc(did)
-			.then(doc => {
-				const aka = doc.alsoKnownAs?.find(a => a.startsWith('at://'));
-				const handle = aka ? aka.replace('at://', '').toLowerCase() : cached?.handle;
+			.then((doc) => {
+				const aka = doc.alsoKnownAs?.find((a) => a.startsWith("at://"));
+				const handle = aka
+					? aka.replace("at://", "").toLowerCase()
+					: cached?.handle;
 				return this.memoize({ did, handle, doc });
 			})
 			.finally(() => {
@@ -108,13 +138,18 @@ export class DidCache {
 		return promise;
 	}
 
-	ensurePdsEndpoint(resolver: ServiceResolver, did: string): Promise<DidCacheSnapshot> {
+	ensurePdsEndpoint(
+		resolver: ServiceResolver,
+		did: string,
+	): Promise<DidCacheSnapshot> {
 		const cached = this.getByDid(did);
 		if (cached?.pdsEndpoint) return Promise.resolve(cached);
 		const pending = this.pdsPromises.get(did);
 		if (pending) return pending;
 		const promise = (async () => {
-			const docSnapshot = await this.ensureDidDoc(resolver, did).catch(() => undefined);
+			const docSnapshot = await this.ensureDidDoc(resolver, did).catch(
+				() => undefined,
+			);
 			if (docSnapshot?.pdsEndpoint) return docSnapshot;
 			const endpoint = await resolver.pdsEndpointForDid(did);
 			return this.memoize({ did, pdsEndpoint: endpoint });
@@ -159,7 +194,11 @@ export class BlobCache {
 		this.store.set(this.key(did, cid), { blob, timestamp: Date.now() });
 	}
 
-	ensure(did: string, cid: string, loader: () => { promise: Promise<Blob>; abort: () => void }): EnsureResult {
+	ensure(
+		did: string,
+		cid: string,
+		loader: () => { promise: Promise<Blob>; abort: () => void },
+	): EnsureResult {
 		const cached = this.get(did, cid);
 		if (cached) {
 			return { promise: Promise.resolve(cached), release: () => {} };
@@ -176,7 +215,7 @@ export class BlobCache {
 		}
 
 		const { promise, abort } = loader();
-		const wrapped = promise.then(blob => {
+		const wrapped = promise.then((blob) => {
 			this.set(did, cid, blob);
 			return blob;
 		});

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useAtProto } from '../providers/AtProtoProvider';
+import { useEffect, useMemo, useState } from "react";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Resolves a handle to its DID, or returns the DID immediately when provided.
@@ -30,28 +30,36 @@ export function useDidResolution(handleOrDid: string | undefined) {
 		};
 		if (!normalizedInput) {
 			reset();
-			return () => { cancelled = true; };
+			return () => {
+				cancelled = true;
+			};
 		}
 
-		const isDid = normalizedInput.startsWith('did:');
-		const normalizedHandle = !isDid ? normalizedInput.toLowerCase() : undefined;
+		const isDid = normalizedInput.startsWith("did:");
+		const normalizedHandle = !isDid
+			? normalizedInput.toLowerCase()
+			: undefined;
 		const cached = isDid
 			? didCache.getByDid(normalizedInput)
 			: didCache.getByHandle(normalizedHandle);
 
 		const initialDid = cached?.did ?? (isDid ? normalizedInput : undefined);
-		const initialHandle = cached?.handle ?? (!isDid ? normalizedHandle : undefined);
+		const initialHandle =
+			cached?.handle ?? (!isDid ? normalizedHandle : undefined);
 
 		setError(undefined);
 		setDid(initialDid);
 		setHandle(initialHandle);
 
 		const needsHandleResolution = !isDid && !cached?.did;
-		const needsDocResolution = isDid && (!cached?.doc || cached.handle === undefined);
+		const needsDocResolution =
+			isDid && (!cached?.doc || cached.handle === undefined);
 
 		if (!needsHandleResolution && !needsDocResolution) {
 			setLoading(false);
-			return () => { cancelled = true; };
+			return () => {
+				cancelled = true;
+			};
 		}
 
 		setLoading(true);
@@ -60,16 +68,25 @@ export function useDidResolution(handleOrDid: string | undefined) {
 			try {
 				let snapshot = cached;
 				if (!isDid && normalizedHandle && needsHandleResolution) {
-					snapshot = await didCache.ensureHandle(resolver, normalizedHandle);
+					snapshot = await didCache.ensureHandle(
+						resolver,
+						normalizedHandle,
+					);
 				}
 
 				if (isDid) {
-					snapshot = await didCache.ensureDidDoc(resolver, normalizedInput);
+					snapshot = await didCache.ensureDidDoc(
+						resolver,
+						normalizedInput,
+					);
 				}
 
 				if (!cancelled) {
-					const resolvedDid = snapshot?.did ?? (isDid ? normalizedInput : undefined);
-					const resolvedHandle = snapshot?.handle ?? (!isDid ? normalizedHandle : undefined);
+					const resolvedDid =
+						snapshot?.did ?? (isDid ? normalizedInput : undefined);
+					const resolvedHandle =
+						snapshot?.handle ??
+						(!isDid ? normalizedHandle : undefined);
 					setDid(resolvedDid);
 					setHandle(resolvedHandle);
 					setError(undefined);
@@ -83,7 +100,9 @@ export function useDidResolution(handleOrDid: string | undefined) {
 			}
 		})();
 
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [normalizedInput, resolver, didCache]);
 
 	return { did, handle, error, loading };
