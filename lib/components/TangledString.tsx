@@ -11,6 +11,8 @@ export interface TangledStringProps {
 	did: string;
 	/** Record key within the `sh.tangled.string` collection. */
 	rkey: string;
+	/** Prefetched Tangled String record. When provided, skips fetching from the network. */
+	record?: TangledStringRecord;
 	/** Optional renderer override for custom presentation. */
 	renderer?: React.ComponentType<TangledStringRendererInjectedProps>;
 	/** Fallback node displayed before loading begins. */
@@ -58,6 +60,7 @@ export const TANGLED_COLLECTION = "sh.tangled.string";
 export const TangledString: React.FC<TangledStringProps> = ({
 	did,
 	rkey,
+	record,
 	renderer,
 	fallback,
 	loadingIndicator,
@@ -78,6 +81,20 @@ export const TangledString: React.FC<TangledStringProps> = ({
 			canonicalUrl={`https://tangled.org/strings/${did}/${encodeURIComponent(rkey)}`}
 		/>
 	);
+
+	// When record is provided, pass it directly to skip fetching
+	if (record) {
+		return (
+			<AtProtoRecord<TangledStringRecord>
+				record={record}
+				renderer={Wrapped}
+				fallback={fallback}
+				loadingIndicator={loadingIndicator}
+			/>
+		);
+	}
+
+	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<TangledStringRecord>
 			did={did}

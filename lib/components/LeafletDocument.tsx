@@ -30,6 +30,10 @@ export interface LeafletDocumentProps {
 	 */
 	rkey: string;
 	/**
+	 * Prefetched Leaflet document record. When provided, skips fetching from the network.
+	 */
+	record?: LeafletDocumentRecord;
+	/**
 	 * Optional custom renderer for advanced layouts.
 	 */
 	renderer?: React.ComponentType<LeafletDocumentRendererInjectedProps>;
@@ -70,6 +74,7 @@ export const LEAFLET_DOCUMENT_COLLECTION = "pub.leaflet.document";
 export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 	did,
 	rkey,
+	record,
 	renderer,
 	fallback,
 	loadingIndicator,
@@ -116,6 +121,19 @@ export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 		);
 	};
 
+	// When record is provided, pass it directly to skip fetching
+	if (record) {
+		return (
+			<AtProtoRecord<LeafletDocumentRecord>
+				record={record}
+				renderer={Wrapped}
+				fallback={fallback}
+				loadingIndicator={loadingIndicator}
+			/>
+		);
+	}
+
+	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<LeafletDocumentRecord>
 			did={did}

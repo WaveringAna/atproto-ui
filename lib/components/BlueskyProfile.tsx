@@ -17,8 +17,13 @@ export interface BlueskyProfileProps {
 	did: string;
 	/**
 	 * Record key within the profile collection. Typically `'self'`.
+	 * Optional when `record` is provided.
 	 */
 	rkey?: string;
+	/**
+	 * Prefetched profile record. When provided, skips fetching the profile from the network.
+	 */
+	record?: ProfileRecord;
 	/**
 	 * Optional renderer override for custom presentation.
 	 */
@@ -94,6 +99,7 @@ export const BLUESKY_PROFILE_COLLECTION = "app.bsky.actor.profile";
 export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 	did: handleOrDid,
 	rkey = "self",
+	record,
 	renderer,
 	fallback,
 	loadingIndicator,
@@ -128,6 +134,20 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 			/>
 		);
 	};
+
+	// When record is provided, pass it directly to skip fetching
+	if (record) {
+		return (
+			<AtProtoRecord<ProfileRecord>
+				record={record}
+				renderer={Wrapped}
+				fallback={fallback}
+				loadingIndicator={loadingIndicator}
+			/>
+		);
+	}
+
+	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<ProfileRecord>
 			did={repoIdentifier}

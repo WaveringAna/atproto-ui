@@ -22,6 +22,11 @@ export interface BlueskyPostProps {
 	 */
 	rkey: string;
 	/**
+	 * Prefetched post record. When provided, skips fetching the post from the network.
+	 * Note: Profile and avatar data will still be fetched unless a custom renderer is used.
+	 */
+	record?: FeedPostRecord;
+	/**
 	 * Custom renderer component that receives resolved post data and status flags.
 	 */
 	renderer?: React.ComponentType<BlueskyPostRendererInjectedProps>;
@@ -119,6 +124,7 @@ export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
 export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 	did: handleOrDid,
 	rkey,
+	record,
 	renderer,
 	fallback,
 	loadingIndicator,
@@ -197,6 +203,19 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		);
 	}
 
+	// When record is provided, pass it directly to skip fetching
+	if (record) {
+		return (
+			<AtProtoRecord<FeedPostRecord>
+				record={record}
+				renderer={Wrapped}
+				fallback={fallback}
+				loadingIndicator={loadingIndicator}
+			/>
+		);
+	}
+
+	// Otherwise fetch the record using did, collection, and rkey
 	return (
 		<AtProtoRecord<FeedPostRecord>
 			did={repoIdentifier}
