@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
 import { createAtprotoClient } from "../utils/atproto-client";
+import { useBlueskyAppview } from "./useBlueskyAppview";
 
 /**
  * Identifier trio required to address an AT Protocol record.
@@ -29,6 +30,13 @@ export interface AtProtoRecordState<T = unknown> {
 
 /**
  * React hook that fetches a single AT Protocol record and tracks loading/error state.
+ * 
+ * For Bluesky collections (app.bsky.*), uses a three-tier fallback strategy:
+ * 1. Try Bluesky appview API first
+ * 2. Fall back to Slingshot getRecord
+ * 3. Finally query the PDS directly
+ * 
+ * For other collections, queries the PDS directly (with Slingshot fallback via the client handler).
  *
  * @param did - DID (or handle before resolution) that owns the record.
  * @param collection - NSID collection from which to fetch the record.
@@ -40,6 +48,15 @@ export function useAtProtoRecord<T = unknown>({
 	collection,
 	rkey,
 }: AtProtoRecordKey): AtProtoRecordState<T> {
+	// Determine if this is a Bluesky collection that should use the appview
+	const isBlueskyCollection = collection?.startsWith("app.bsky.");
+	
+	// Use the three-tier fallback for Bluesky collections
+	const blueskyResult = useBlueskyAppview<T>({
+		did: isBlueskyCollection ? handleOrDid : undefined,
+		collection: isBlueskyCollection ? collection : undefined,
+		rkey: isBlueskyCollection ? rkey : undefined,
+	});
 	const {
 		did,
 		error: didError,
@@ -61,6 +78,13 @@ export function useAtProtoRecord<T = unknown>({
 			if (cancelled) return;
 			setState((prev) => ({ ...prev, ...next }));
 		};
+
+		// If using Bluesky appview, skip the manual fetch logic
+		if (isBlueskyCollection) {
+			return () => {
+				cancelled = true;
+			};
+		}
 
 		if (!handleOrDid || !collection || !rkey) {
 			assignState({
@@ -139,7 +163,17 @@ export function useAtProtoRecord<T = unknown>({
 		resolvingEndpoint,
 		didError,
 		endpointError,
+		isBlueskyCollection,
 	]);
+
+	// Return Bluesky appview result if it's a Bluesky collection
+	if (isBlueskyCollection) {
+		return {
+			record: blueskyResult.record,
+			error: blueskyResult.error,
+			loading: blueskyResult.loading,
+		};
+	}
 
 	return state;
 }

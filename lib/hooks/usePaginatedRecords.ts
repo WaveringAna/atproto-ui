@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
-import { createAtprotoClient } from "../utils/atproto-client";
+import { 
+	DEFAULT_APPVIEW_SERVICE, 
+	callAppviewRpc, 
+	callListRecords 
+} from "./useBlueskyAppview";
 
 /**
  * Record envelope returned by paginated AT Protocol queries.
@@ -70,7 +74,7 @@ export interface UsePaginatedRecordsResult<T> {
 	pagesCount: number;
 }
 
-const DEFAULT_APPVIEW_SERVICE = "https://public.api.bsky.app";
+
 
 export type AuthorFeedFilter =
 	| "posts_with_replies"
@@ -188,55 +192,37 @@ export function usePaginatedRecords<T>({
 					!!actorIdentifier;
 				if (shouldUseAuthorFeed) {
 					try {
-						const { rpc } = await createAtprotoClient({
-							service:
-								authorFeedService ?? DEFAULT_APPVIEW_SERVICE,
-						});
-						const res = await (
-							rpc as unknown as {
-								get: (
-									nsid: string,
-									opts: {
-										params: Record<
-											string,
-											| string
-											| number
-											| boolean
-											| undefined
-										>;
-									},
-								) => Promise<{
-									ok: boolean;
-									data: {
-										feed?: Array<{
-											post?: {
-												uri?: string;
-												record?: T;
-												reply?: {
-													parent?: {
-														uri?: string;
-														author?: {
-															handle?: string;
-															did?: string;
-														};
-													};
-												};
+						interface AuthorFeedResponse {
+							feed?: Array<{
+								post?: {
+									uri?: string;
+									record?: T;
+									reply?: {
+										parent?: {
+											uri?: string;
+											author?: {
+												handle?: string;
+												did?: string;
 											};
-											reason?: AuthorFeedReason;
-										}>;
-										cursor?: string;
+										};
 									};
-								}>;
-							}
-						).get("app.bsky.feed.getAuthorFeed", {
-							params: {
+								};
+								reason?: AuthorFeedReason;
+							}>;
+							cursor?: string;
+						}
+						
+						const res = await callAppviewRpc<AuthorFeedResponse>(
+							authorFeedService ?? DEFAULT_APPVIEW_SERVICE,
+							"app.bsky.feed.getAuthorFeed",
+							{
 								actor: actorIdentifier,
 								limit,
 								cursor,
 								filter: authorFeedFilter,
 								includePins: authorFeedIncludePins,
 							},
-						});
+						);
 						if (!res.ok)
 							throw new Error("Failed to fetch author feed");
 						const { feed, cursor: feedCursor } = res.data;
@@ -249,6 +235,11 @@ export function usePaginatedRecords<T>({
 									!post.record
 								)
 									return acc;
+								// Skip records with invalid timestamps (before 2023)
+								if (!isValidTimestamp(post.record)) {
+									console.warn("Skipping record with invalid timestamp:", post.uri);
+									return acc;
+								}
 								acc.push({
 									uri: post.uri,
 									rkey: extractRkey(post.uri),
@@ -268,47 +259,30 @@ export function usePaginatedRecords<T>({
 				}
 
 				if (!mapped) {
-					const { rpc } = await createAtprotoClient({
-						service: endpoint,
-					});
-					const res = await (
-						rpc as unknown as {
-							get: (
-								nsid: string,
-								opts: {
-									params: Record<
-										string,
-										string | number | boolean | undefined
-									>;
-								},
-							) => Promise<{
-								ok: boolean;
-								data: {
-									records: Array<{
-										uri: string;
-										rkey?: string;
-										value: T;
-									}>;
-									cursor?: string;
-								};
-							}>;
-						}
-					).get("com.atproto.repo.listRecords", {
-						params: {
-							repo: did,
-							collection,
-							limit,
-							cursor,
-							reverse: false,
-						},
-					});
-					if (!res.ok) throw new Error("Failed to list records");
+					// Slingshot doesn't support listRecords, query PDS directly
+					const res = await callListRecords<T>(
+						endpoint,
+						did,
+						collection,
+						limit,
+						cursor,
+					);
+					
+					if (!res.ok) throw new Error("Failed to list records from PDS");
 					const { records, cursor: repoCursor } = res.data;
-					mapped = records.map((item) => ({
-						uri: item.uri,
-						rkey: item.rkey ?? extractRkey(item.uri),
-						value: item.value,
-					}));
+					mapped = records
+						.filter((item) => {
+							if (!isValidTimestamp(item.value)) {
+								console.warn("Skipping record with invalid timestamp:", item.uri);
+								return false;
+							}
+							return true;
+						})
+						.map((item) => ({
+							uri: item.uri,
+							rkey: item.rkey ?? extractRkey(item.uri),
+							value: item.value,
+						}));
 					nextCursor = repoCursor;
 				}
 
@@ -474,4 +448,26 @@ export function usePaginatedRecords<T>({
 function extractRkey(uri: string): string {
 	const parts = uri.split("/");
 	return parts[parts.length - 1];
+}
+
+/**
+ * Validates that a record has a reasonable timestamp (not before 2023).
+ * ATProto was created in 2023, so any timestamp before that is invalid.
+ */
+function isValidTimestamp(record: unknown): boolean {
+	if (typeof record !== "object" || record === null) return true;
+	
+	const recordObj = record as { createdAt?: string; indexedAt?: string };
+	const timestamp = recordObj.createdAt || recordObj.indexedAt;
+	
+	if (!timestamp || typeof timestamp !== "string") return true; // No timestamp to validate
+	
+	try {
+		const date = new Date(timestamp);
+		// ATProto was created in 2023, reject anything before that
+		return date.getFullYear() >= 2023;
+	} catch {
+		// If we can't parse the date, consider it valid to avoid false negatives
+		return true;
+	}
 }

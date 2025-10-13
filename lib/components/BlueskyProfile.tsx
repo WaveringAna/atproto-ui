@@ -6,6 +6,7 @@ import { useBlob } from "../hooks/useBlob";
 import { getAvatarCid } from "../utils/profile";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { formatDidForLabel } from "../utils/at-uri";
+import type { BlobWithCdn } from "../hooks/useBlueskyAppview";
 
 /**
  * Props used to render a Bluesky actor profile record.
@@ -122,8 +123,15 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 		loading: boolean;
 		error?: Error;
 	}> = (props) => {
-		const avatarCid = getAvatarCid(props.record);
-		const { url: avatarUrl } = useBlob(repoIdentifier, avatarCid);
+		// Check if the avatar has a CDN URL from the appview (preferred)
+		const avatar = props.record?.avatar;
+		const avatarCdnUrl = isBlobWithCdn(avatar) ? avatar.cdnUrl : undefined;
+		const avatarCid = !avatarCdnUrl ? getAvatarCid(props.record) : undefined;
+		const { url: avatarUrlFromBlob } = useBlob(repoIdentifier, avatarCid);
+		
+		// Use CDN URL from appview if available, otherwise use blob URL
+		const avatarUrl = avatarCdnUrl || avatarUrlFromBlob;
+		
 		return (
 			<Component
 				{...props}
@@ -157,5 +165,20 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 		/>
 	);
 };
+
+/**
+ * Type guard to check if a blob has a CDN URL from appview.
+ */
+function isBlobWithCdn(value: unknown): value is BlobWithCdn {
+	if (typeof value !== "object" || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return (
+		obj.$type === "blob" &&
+		typeof obj.cdnUrl === "string" &&
+		typeof obj.ref === "object" &&
+		obj.ref !== null &&
+		typeof (obj.ref as { $link?: unknown }).$link === "string"
+	);
+}
 
 export default BlueskyProfile;

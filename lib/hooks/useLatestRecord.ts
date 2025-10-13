@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
-import { createAtprotoClient } from "../utils/atproto-client";
+import { callListRecords } from "./useBlueskyAppview";
 
 /**
  * Shape of the state returned by {@link useLatestRecord}.
@@ -20,7 +20,12 @@ export interface LatestRecordState<T = unknown> {
 }
 
 /**
- * Fetches the most recent record from a collection using `listRecords(limit=1)`.
+ * Fetches the most recent record from a collection using `listRecords(limit=3)`.
+ * 
+ * Note: Slingshot does not support listRecords, so this always queries the actor's PDS directly.
+ * 
+ * Records with invalid timestamps (before 2023, when ATProto was created) are automatically
+ * skipped, and additional records are fetched to find a valid one.
  *
  * @param handleOrDid - Handle or DID that owns the collection.
  * @param collection - NSID of the collection to query.
@@ -91,34 +96,18 @@ export function useLatestRecord<T = unknown>(
 
 		(async () => {
 			try {
-				const { rpc } = await createAtprotoClient({
-					service: endpoint,
-				});
-				const res = await (
-					rpc as unknown as {
-						get: (
-							nsid: string,
-							opts: {
-								params: Record<
-									string,
-									string | number | boolean
-								>;
-							},
-						) => Promise<{
-							ok: boolean;
-							data: {
-								records: Array<{
-									uri: string;
-									rkey?: string;
-									value: T;
-								}>;
-							};
-						}>;
-					}
-				).get("com.atproto.repo.listRecords", {
-					params: { repo: did, collection, limit: 1, reverse: false },
-				});
-				if (!res.ok) throw new Error("Failed to list records");
+				// Slingshot doesn't support listRecords, so we query PDS directly
+				const res = await callListRecords<T>(
+					endpoint,
+					did,
+					collection,
+					3, // Fetch 3 in case some have invalid timestamps
+				);
+				
+				if (!res.ok) {
+					throw new Error("Failed to list records from PDS");
+				}
+
 				const list = res.data.records;
 				if (list.length === 0) {
 					assign({
@@ -129,10 +118,24 @@ export function useLatestRecord<T = unknown>(
 					});
 					return;
 				}
-				const first = list[0];
-				const derivedRkey = first.rkey ?? extractRkey(first.uri);
+				
+				// Find the first valid record (skip records before 2023)
+				const validRecord = list.find((item) => isValidTimestamp(item.value));
+				
+				if (!validRecord) {
+					console.warn("No valid records found (all had timestamps before 2023)");
+					assign({
+						loading: false,
+						empty: true,
+						record: undefined,
+						rkey: undefined,
+					});
+					return;
+				}
+				
+				const derivedRkey = validRecord.rkey ?? extractRkey(validRecord.uri);
 				assign({
-					record: first.value,
+					record: validRecord.value,
 					rkey: derivedRkey,
 					loading: false,
 					empty: false,
@@ -163,4 +166,26 @@ function extractRkey(uri: string): string | undefined {
 	if (!uri) return undefined;
 	const parts = uri.split("/");
 	return parts[parts.length - 1];
+}
+
+/**
+ * Validates that a record has a reasonable timestamp (not before 2023).
+ * ATProto was created in 2023, so any timestamp before that is invalid.
+ */
+function isValidTimestamp(record: unknown): boolean {
+	if (typeof record !== "object" || record === null) return true;
+	
+	const recordObj = record as { createdAt?: string; indexedAt?: string };
+	const timestamp = recordObj.createdAt || recordObj.indexedAt;
+	
+	if (!timestamp || typeof timestamp !== "string") return true; // No timestamp to validate
+	
+	try {
+		const date = new Date(timestamp);
+		// ATProto was created in 2023, reject anything before that
+		return date.getFullYear() >= 2023;
+	} catch {
+		// If we can't parse the date, consider it valid to avoid false negatives
+		return true;
+	}
 }

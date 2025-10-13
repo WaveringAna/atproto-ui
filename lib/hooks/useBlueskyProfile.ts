@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { usePdsEndpoint } from "./usePdsEndpoint";
-import { createAtprotoClient } from "../utils/atproto-client";
+import { useBlueskyAppview } from "./useBlueskyAppview";
+import type { ProfileRecord } from "../types/bluesky";
 
 /**
  * Minimal profile fields returned by the Bluesky actor profile endpoint.
@@ -24,47 +23,59 @@ export interface BlueskyProfileData {
 
 /**
  * Fetches a Bluesky actor profile for a DID and exposes loading/error state.
+ * 
+ * Uses a three-tier fallback strategy:
+ * 1. Try Bluesky appview API (app.bsky.actor.getProfile) - CIDs are extracted from CDN URLs
+ * 2. Fall back to Slingshot getRecord
+ * 3. Finally query the PDS directly
+ * 
+ * When using the appview, avatar/banner CDN URLs (e.g., https://cdn.bsky.app/img/avatar/plain/did:plc:xxx/bafkreixxx@jpeg)
+ * are automatically parsed to extract CIDs and convert them to standard Blob format for compatibility.
  *
  * @param did - Actor DID whose profile should be retrieved.
  * @returns {{ data: BlueskyProfileData | undefined; loading: boolean; error: Error | undefined }} Object exposing the profile payload, loading flag, and any error.
  */
 export function useBlueskyProfile(did: string | undefined) {
-	const { endpoint } = usePdsEndpoint(did);
-	const [data, setData] = useState<BlueskyProfileData | undefined>();
-	const [loading, setLoading] = useState<boolean>(!!did);
-	const [error, setError] = useState<Error | undefined>();
+	const { record, loading, error } = useBlueskyAppview<ProfileRecord>({
+		did,
+		collection: "app.bsky.actor.profile",
+		rkey: "self",
+	});
 
-	useEffect(() => {
-		let cancelled = false;
-		async function run() {
-			if (!did || !endpoint) return;
-			setLoading(true);
-			try {
-				const { rpc } = await createAtprotoClient({
-					service: endpoint,
-				});
-				const client = rpc as unknown as {
-					get: (
-						nsid: string,
-						options: { params: { actor: string } },
-					) => Promise<{ ok: boolean; data: unknown }>;
-				};
-				const res = await client.get("app.bsky.actor.getProfile", {
-					params: { actor: did },
-				});
-				if (!res.ok) throw new Error("Profile request failed");
-				if (!cancelled) setData(res.data as BlueskyProfileData);
-			} catch (e) {
-				if (!cancelled) setError(e as Error);
-			} finally {
-				if (!cancelled) setLoading(false);
-			}
+	// Convert ProfileRecord to BlueskyProfileData
+	// Note: avatar and banner are Blob objects in the record (from all sources)
+	// The appview response is converted to ProfileRecord format by extracting CIDs from CDN URLs
+	const data: BlueskyProfileData | undefined = record
+		? {
+			did: did || "",
+			handle: "",
+			displayName: record.displayName,
+			description: record.description,
+			avatar: extractCidFromProfileBlob(record.avatar),
+			banner: extractCidFromProfileBlob(record.banner),
+			createdAt: record.createdAt,
 		}
-		run();
-		return () => {
-			cancelled = true;
-		};
-	}, [did, endpoint]);
+		: undefined;
 
 	return { data, loading, error };
+}
+
+/**
+ * Helper to extract CID from profile blob (avatar or banner).
+ */
+function extractCidFromProfileBlob(blob: unknown): string | undefined {
+	if (typeof blob !== "object" || blob === null) return undefined;
+	
+	const blobObj = blob as {
+		ref?: { $link?: string };
+		cid?: string;
+	};
+	
+	if (typeof blobObj.cid === "string") return blobObj.cid;
+	if (typeof blobObj.ref === "object" && blobObj.ref !== null) {
+		const link = blobObj.ref.$link;
+		if (typeof link === "string") return link;
+	}
+	
+	return undefined;
 }

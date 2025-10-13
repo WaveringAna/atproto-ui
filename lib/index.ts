@@ -17,6 +17,7 @@ export * from "./components/TangledString";
 // Hooks
 export * from "./hooks/useAtProtoRecord";
 export * from "./hooks/useBlob";
+export * from "./hooks/useBlueskyAppview";
 export * from "./hooks/useBlueskyProfile";
 export * from "./hooks/useColorScheme";
 export * from "./hooks/useDidResolution";
