@@ -39,10 +39,7 @@ export interface BlueskyPostProps {
 	 * React node displayed while the post fetch is actively loading.
 	 */
 	loadingIndicator?: React.ReactNode;
-	/**
-	 * Preferred color scheme to pass through to renderers.
-	 */
-	colorScheme?: "light" | "dark" | "system";
+
 	/**
 	 * Whether the default renderer should show the Bluesky icon.
 	 * Defaults to `true`.
@@ -83,10 +80,7 @@ export type BlueskyPostRendererInjectedProps = {
 	 * Resolved URL for the author's avatar blob, if available.
 	 */
 	avatarUrl?: string;
-	/**
-	 * Preferred color scheme bubbled down to children.
-	 */
-	colorScheme?: "light" | "dark" | "system";
+
 	/**
 	 * Placement strategy for the Bluesky icon.
 	 */
@@ -117,19 +111,17 @@ export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
  * @param renderer - Optional renderer component to override the default.
  * @param fallback - Node rendered before the first fetch attempt resolves.
  * @param loadingIndicator - Node rendered while the post is loading.
- * @param colorScheme - Preferred color scheme forwarded to downstream components.
  * @param showIcon - Controls whether the Bluesky icon should render alongside the post. Defaults to `true`.
  * @param iconPlacement - Determines where the icon is positioned in the rendered post. Defaults to `'timestamp'`.
  * @returns A component that renders loading/fallback states and the resolved post.
  */
-export const BlueskyPost: React.FC<BlueskyPostProps> = ({
+export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(({
 	did: handleOrDid,
 	rkey,
 	record,
 	renderer,
 	fallback,
 	loadingIndicator,
-	colorScheme,
 	showIcon = true,
 	iconPlacement = "timestamp",
 }) => {
@@ -176,7 +168,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 					authorHandle={authorHandle}
 					authorDid={repoIdentifier}
 					avatarUrl={avatarUrl}
-					colorScheme={colorScheme}
 					iconPlacement={iconPlacement}
 					showIcon={showIcon}
 					atUri={atUri}
@@ -191,7 +182,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 		avatarCid,
 		avatarCdnUrl,
 		authorHandle,
-		colorScheme,
 		iconPlacement,
 		showIcon,
 		atUri,
@@ -230,6 +220,6 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = ({
 			loadingIndicator={loadingIndicator}
 		/>
 	);
-};
+});
 
 export default BlueskyPost;

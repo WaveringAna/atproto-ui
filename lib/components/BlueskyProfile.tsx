@@ -41,10 +41,7 @@ export interface BlueskyProfileProps {
 	 * Pre-resolved handle to display when available externally.
 	 */
 	handle?: string;
-	/**
-	 * Preferred color scheme forwarded to renderer implementations.
-	 */
-	colorScheme?: "light" | "dark" | "system";
+
 }
 
 /**
@@ -75,10 +72,7 @@ export type BlueskyProfileRendererInjectedProps = {
 	 * Blob URL for the user's avatar, when available.
 	 */
 	avatarUrl?: string;
-	/**
-	 * Preferred color scheme for theming downstream components.
-	 */
-	colorScheme?: "light" | "dark" | "system";
+
 };
 
 /** NSID for the canonical Bluesky profile collection. */
@@ -94,10 +88,9 @@ export const BLUESKY_PROFILE_COLLECTION = "app.bsky.actor.profile";
  * @param fallback - Node rendered prior to loading state initialization.
  * @param loadingIndicator - Node rendered while the profile request is in-flight.
  * @param handle - Optional pre-resolved handle to display.
- * @param colorScheme - Preferred color scheme forwarded to the renderer.
  * @returns A rendered profile component with loading/error states handled.
  */
-export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
+export const BlueskyProfile: React.FC<BlueskyProfileProps> = React.memo(({
 	did: handleOrDid,
 	rkey = "self",
 	record,
@@ -105,7 +98,6 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 	fallback,
 	loadingIndicator,
 	handle,
-	colorScheme,
 }) => {
 	const Component: React.ComponentType<BlueskyProfileRendererInjectedProps> =
 		renderer ?? ((props) => <BlueskyProfileRenderer {...props} />);
@@ -136,7 +128,6 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 				did={repoIdentifier}
 				handle={effectiveHandle}
 				avatarUrl={avatarUrl}
-				colorScheme={colorScheme}
 			/>
 		);
 	};
@@ -162,6 +153,6 @@ export const BlueskyProfile: React.FC<BlueskyProfileProps> = ({
 			loadingIndicator={loadingIndicator}
 		/>
 	);
-};
+});
 
 export default BlueskyProfile;

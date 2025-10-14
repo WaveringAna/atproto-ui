@@ -1,9 +1,5 @@
 import React from "react";
 import type { ProfileRecord } from "../types/bluesky";
-import {
-	useColorScheme,
-	type ColorSchemePreference,
-} from "../hooks/useColorScheme";
 import { BlueskyIcon } from "../components/BlueskyIcon";
 
 export interface BlueskyProfileRendererProps {
@@ -13,7 +9,6 @@ export interface BlueskyProfileRendererProps {
 	did: string;
 	handle?: string;
 	avatarUrl?: string;
-	colorScheme?: ColorSchemePreference;
 }
 
 export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
@@ -23,9 +18,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 	did,
 	handle,
 	avatarUrl,
-	colorScheme = "system",
 }) => {
-	const scheme = useColorScheme(colorScheme);
 
 	if (error)
 		return (
@@ -35,7 +28,6 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 		);
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
 
-	const palette = scheme === "dark" ? theme.dark : theme.light;
 	const profileUrl = `https://bsky.app/profile/${encodeURIComponent(did)}`;
 	const rawWebsite = record.website?.trim();
 	const websiteHref = rawWebsite
@@ -48,37 +40,37 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 		: undefined;
 
 	return (
-		<div style={{ ...base.card, ...palette.card }}>
+		<div style={{ ...base.card, background: `var(--atproto-color-bg)`, borderColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
 			<div style={base.header}>
 				{avatarUrl ? (
 					<img src={avatarUrl} alt="avatar" style={base.avatarImg} />
 				) : (
 					<div
-						style={{ ...base.avatar, ...palette.avatar }}
+						style={{ ...base.avatar, background: `var(--atproto-color-bg-elevated)` }}
 						aria-label="avatar"
 					/>
 				)}
 				<div style={{ flex: 1 }}>
-					<div style={{ ...base.display, ...palette.display }}>
+					<div style={{ ...base.display, color: `var(--atproto-color-text)` }}>
 						{record.displayName ?? handle ?? did}
 					</div>
-					<div style={{ ...base.handleLine, ...palette.handleLine }}>
+					<div style={{ ...base.handleLine, color: `var(--atproto-color-text-secondary)` }}>
 						@{handle ?? did}
 					</div>
 					{record.pronouns && (
-						<div style={{ ...base.pronouns, ...palette.pronouns }}>
+						<div style={{ ...base.pronouns, background: `var(--atproto-color-bg-elevated)`, color: `var(--atproto-color-text-secondary)` }}>
 							{record.pronouns}
 						</div>
 					)}
 				</div>
 			</div>
 			{record.description && (
-				<p style={{ ...base.desc, ...palette.desc }}>
+				<p style={{ ...base.desc, color: `var(--atproto-color-text)` }}>
 					{record.description}
 				</p>
 			)}
 			{record.createdAt && (
-				<div style={{ ...base.meta, ...palette.meta }}>
+				<div style={{ ...base.meta, color: `var(--atproto-color-text-secondary)` }}>
 					Joined {new Date(record.createdAt).toLocaleDateString()}
 				</div>
 			)}
@@ -88,7 +80,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 						href={websiteHref}
 						target="_blank"
 						rel="noopener noreferrer"
-						style={{ ...base.link, ...palette.link }}
+						style={{ ...base.link, color: `var(--atproto-color-link)` }}
 					>
 						{websiteLabel}
 					</a>
@@ -97,7 +89,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 					href={profileUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					style={{ ...base.link, ...palette.link }}
+					style={{ ...base.link, color: `var(--atproto-color-link)` }}
 				>
 					View on Bluesky
 				</a>
@@ -181,66 +173,5 @@ const base: Record<string, React.CSSProperties> = {
 		bottom: 12,
 	},
 };
-
-const theme = {
-	light: {
-		card: {
-			border: "1px solid #e2e8f0",
-			background: "#ffffff",
-			color: "#0f172a",
-		},
-		avatar: {
-			background: "#cbd5e1",
-		},
-		display: {
-			color: "#0f172a",
-		},
-		handleLine: {
-			color: "#64748b",
-		},
-		desc: {
-			color: "#0f172a",
-		},
-		meta: {
-			color: "#94a3b8",
-		},
-		pronouns: {
-			background: "#e2e8f0",
-			color: "#1e293b",
-		},
-		link: {
-			color: "#2563eb",
-		},
-	},
-	dark: {
-		card: {
-			border: "1px solid #1e293b",
-			background: "#0b1120",
-			color: "#e2e8f0",
-		},
-		avatar: {
-			background: "#1e293b",
-		},
-		display: {
-			color: "#e2e8f0",
-		},
-		handleLine: {
-			color: "#cbd5f5",
-		},
-		desc: {
-			color: "#e2e8f0",
-		},
-		meta: {
-			color: "#a5b4fc",
-		},
-		pronouns: {
-			background: "#1e293b",
-			color: "#e2e8f0",
-		},
-		link: {
-			color: "#38bdf8",
-		},
-	},
-} satisfies Record<"light" | "dark", Record<string, React.CSSProperties>>;
 
 export default BlueskyProfileRenderer;

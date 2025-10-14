@@ -57,7 +57,7 @@ export const TANGLED_COLLECTION = "sh.tangled.string";
  * @param colorScheme - Preferred color scheme for theming the renderer.
  * @returns A JSX subtree representing the Tangled String record with loading states handled.
  */
-export const TangledString: React.FC<TangledStringProps> = ({
+export const TangledString: React.FC<TangledStringProps> = React.memo(({
 	did,
 	rkey,
 	record,
@@ -103,6 +103,6 @@ export const TangledString: React.FC<TangledStringProps> = ({
 			loadingIndicator={loadingIndicator}
 		/>
 	);
-};
+});
 
 export default TangledString;

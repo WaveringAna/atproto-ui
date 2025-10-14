@@ -1,6 +1,6 @@
 # atproto-ui
 
-atproto-ui is a component library and set of hooks for rendering records from the AT Protocol (Bluesky, Leaflet, and friends) in React applications. It handles DID resolution, PDS endpoint discovery, and record fetching so you can focus on UI. [Live demo](https://atproto-ui.wisp.place).
+A React component library for rendering AT Protocol records (Bluesky, Leaflet, Tangled, and more). Handles DID resolution, PDS discovery, and record fetching automatically. [Live demo](https://atproto-ui.wisp.place).
 
 ## Screenshots
 
@@ -9,10 +9,11 @@ atproto-ui is a component library and set of hooks for rendering records from th
 
 ## Features
 
-- Drop-in components for common record types (`BlueskyPost`, `BlueskyProfile`, `TangledString`, etc.).
-- Pass prefetched data directly to components to skip API calls—perfect for server-side rendering, caching, or when you already have the data.
-- Hooks and helpers for composing your own renderers for your own applications, (PRs welcome!)
-- Built on the lightweight [`@atcute/*`](https://github.com/atcute) clients.
+- **Drop-in components** for common record types (`BlueskyPost`, `BlueskyProfile`, `TangledString`, `LeafletDocument`)
+- **Prefetch support** - Pass data directly to skip API calls (perfect for SSR/caching)
+- **Customizable theming** - Override CSS variables to match your app's design
+- **Composable hooks** - Build custom renderers with protocol primitives
+- Built on lightweight [`@atcute/*`](https://tangled.org/@mary.my.id/atcute) clients
 
 ## Installation
 
@@ -20,29 +21,65 @@ atproto-ui is a component library and set of hooks for rendering records from th
 npm install atproto-ui
 ```
 
-## Quick start
-
-1. Wrap your app (once) with the `AtProtoProvider`.
-2. Drop any of the ready-made components inside that provider.
-3. Use the hooks to prefetch handles, blobs, or latest records when you want to control the render flow yourself.
+## Quick Start
 
 ```tsx
-import { AtProtoProvider, BlueskyPost } from "atproto-ui";
+import { AtProtoProvider, BlueskyPost, LeafletDocument } from "atproto-ui";
 
 export function App() {
 	return (
 		<AtProtoProvider>
 			<BlueskyPost did="did:plc:example" rkey="3k2aexample" />
-			{/* you can use handles in the components as well. */}
+			{/* You can use handles too */}
 			<LeafletDocument did="nekomimi.pet" rkey="3m2seagm2222c" />
 		</AtProtoProvider>
 	);
 }
 ```
 
-## Passing prefetched data to skip API calls
+**Note:** The library automatically imports the CSS when you import any component. If you prefer to import it explicitly (e.g., for better IDE support or control over load order), you can use `import "atproto-ui/styles.css"`.
 
-All components accept a `record` prop. When provided, the component uses your data immediately without making network requests for that record. This is perfect for SSR, caching strategies, or when you've already fetched data through other means.
+## Theming
+
+Components use CSS variables for theming. By default, they respond to system dark mode preferences, or you can set a theme explicitly:
+
+```tsx
+// Set theme via data attribute on document element
+document.documentElement.setAttribute("data-theme", "dark"); // or "light"
+
+// For system preference (default)
+document.documentElement.removeAttribute("data-theme");
+```
+
+### Available CSS Variables
+
+```css
+--atproto-color-bg
+--atproto-color-bg-elevated
+--atproto-color-text
+--atproto-color-text-secondary
+--atproto-color-border
+--atproto-color-link
+/* ...and more */
+```
+
+### Override Component Theme
+
+Wrap any component in a div with custom CSS variables to override its appearance:
+
+```tsx
+<div style={{
+  '--atproto-color-bg': '#f0f0f0',
+  '--atproto-color-text': '#000',
+  '--atproto-color-link': '#0066cc',
+}}>
+  <BlueskyPost did="..." rkey="..." />
+</div>
+```
+
+## Prefetched Data
+
+All components accept a `record` prop. When provided, the component uses your data immediately without making network requests. Perfect for SSR, caching, or when you've already fetched data.
 
 ```tsx
 import { BlueskyPost, useLatestRecord } from "atproto-ui";
@@ -63,37 +100,42 @@ const MyComponent: React.FC<{ did: string }> = ({ did }) => {
 };
 ```
 
-The same pattern works for all components:
+All components support prefetched data:
 
 ```tsx
-// BlueskyProfile with prefetched data
 <BlueskyProfile did={did} record={profileRecord} />
-
-// TangledString with prefetched data
 <TangledString did={did} rkey={rkey} record={stringRecord} />
-
-// LeafletDocument with prefetched data
 <LeafletDocument did={did} rkey={rkey} record={documentRecord} />
 ```
 
-### Available building blocks
+## API Reference
 
-| Component / Hook                                                | What it does                                                                                                         |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `AtProtoProvider`                                               | Configures PLC directory (defaults to `https://plc.directory`) and shares protocol clients via React context.                            |
-| `AtProtoRecord`                                                 | Core component that fetches and renders any AT Protocol record. **Accepts a `record` prop to use prefetched data and skip API calls.**   |
-| `BlueskyProfile`                                                | Renders a profile card for a DID/handle. **Accepts a `record` prop to skip fetching.** Also supports `fallback`, `loadingIndicator`, `renderer`, and `colorScheme`.      |
-| `BlueskyPost` / `BlueskyQuotePost`                              | Shows a single Bluesky post with quotation support. **Accepts a `record` prop to skip fetching.** Custom renderer overrides and loading/fallback knobs available. |
-| `BlueskyPostList`                                               | Lists the latest posts with built-in pagination (defaults: 5 per page, pagination controls on).                      |
-| `TangledString`                                                 | Renders a Tangled string (gist-like record). **Accepts a `record` prop to skip fetching.** Optional renderer overrides available.                                        |
-| `LeafletDocument`                                               | Displays long-form Leaflet documents with blocks and theme support. **Accepts a `record` prop to skip fetching.** Renderer overrides available.                             |
-| `useDidResolution`, `useLatestRecord`, `usePaginatedRecords`, … | Hook-level access to records. `useLatestRecord` returns both the `record` and `rkey` so you can pass them directly to components. |
+### Components
 
-All components accept a `colorScheme` of `'light' | 'dark' | 'system'` so they can blend into your design. They also accept `fallback` and `loadingIndicator` props to control what renders before or during network work, and most expose a `renderer` override when you need total control of the final markup.
+| Component | Description |
+|-----------|-------------|
+| `AtProtoProvider` | Context provider for sharing protocol clients. Optional `plcDirectory` prop. |
+| `AtProtoRecord` | Core component for fetching/rendering any AT Protocol record. Accepts `record` prop. |
+| `BlueskyProfile` | Profile card for a DID/handle. Accepts `record`, `fallback`, `loadingIndicator`, `renderer`. |
+| `BlueskyPost` | Single Bluesky post. Accepts `record`, `iconPlacement`, custom renderers. |
+| `BlueskyQuotePost` | Post with quoted post support. Accepts `record`. |
+| `BlueskyPostList` | Paginated list of posts (default: 5 per page). |
+| `TangledString` | Tangled string (code snippet) renderer. Accepts `record`. |
+| `LeafletDocument` | Long-form document with blocks. Accepts `record`, `publicationRecord`. |
 
-### Using hooks to fetch data once
+### Hooks
 
-`useLatestRecord` gives you the most recent record for any collection along with its `rkey`. You can pass both to components to skip the fetch:
+| Hook | Returns |
+|------|---------|
+| `useDidResolution(did)` | `{ did, handle, loading, error }` |
+| `useLatestRecord(did, collection)` | `{ record, rkey, loading, error, empty }` |
+| `usePaginatedRecords(options)` | `{ records, loading, hasNext, loadNext, ... }` |
+| `useBlob(did, cid)` | `{ url, loading, error }` |
+| `useAtProtoRecord(did, collection, rkey)` | `{ record, loading, error }` |
+
+## Advanced Usage
+
+### Using Hooks for Custom Logic
 
 ```tsx
 import { useLatestRecord, BlueskyPost } from "atproto-ui";
@@ -114,64 +156,44 @@ const LatestBlueskyPost: React.FC<{ did: string }> = ({ did }) => {
 };
 ```
 
-The same pattern works for other components. Just swap the collection NSID and component:
+### Custom Renderer
+
+Use `AtProtoRecord` with a custom renderer for full control:
 
 ```tsx
-const LatestLeafletDocument: React.FC<{ did: string }> = ({ did }) => {
-	const { record, rkey } = useLatestRecord(did, "pub.leaflet.document");
-	return record && rkey ? (
-		<LeafletDocument did={did} rkey={rkey} record={record} colorScheme="light" />
-	) : null;
-};
-```
-
-## Compose your own component
-
-The helpers let you stitch together custom experiences without reimplementing protocol plumbing. The example below pulls a creator's latest post and renders a minimal summary:
-
-```tsx
-import { useLatestRecord, useColorScheme, AtProtoRecord } from "atproto-ui";
+import { AtProtoRecord } from "atproto-ui";
 import type { FeedPostRecord } from "atproto-ui";
 
-const LatestPostSummary: React.FC<{ did: string }> = ({ did }) => {
-	const scheme = useColorScheme("system");
-	const { rkey, loading, error } = useLatestRecord<FeedPostRecord>(
-		did,
-		"app.bsky.feed.post",
-	);
-
-	if (loading) return <span>Loading…</span>;
-	if (error || !rkey) return <span>No post yet.</span>;
-
-	return (
-		<AtProtoRecord<FeedPostRecord>
-			did={did}
-			collection="app.bsky.feed.post"
-			rkey={rkey}
-			renderer={({ record }) => (
-				<article data-color-scheme={scheme}>
-					<strong>{record?.text ?? "Empty post"}</strong>
-				</article>
-			)}
-		/>
-	);
-};
+<AtProtoRecord<FeedPostRecord>
+	did={did}
+	collection="app.bsky.feed.post"
+	rkey={rkey}
+	renderer={({ record, loading, error }) => (
+		<article>
+			<strong>{record?.text ?? "Empty post"}</strong>
+		</article>
+	)}
+/>
 ```
 
-There is a [demo](https://atproto-ui.wisp.place/) where you can see the components in live action.
+## Demo
 
-## Running the demo locally
+Check out the [live demo](https://atproto-ui.wisp.place/) to see all components in action.
+
+### Running Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the printed Vite URL and try entering a Bluesky handle to see the components in action.
+## Contributing
 
-## Next steps
+Contributions are welcome! Open an issue or PR for:
+- New record type support (e.g., Grain.social photos)
+- Improved documentation
+- Bug fixes or feature requests
 
-- Expand renderer coverage (e.g., Grain.social photos).
-- Expand documentation with TypeScript API references and theming guidelines.
+## License
 
-Contributions and ideas are welcome—feel free to open an issue or PR!
+MIT

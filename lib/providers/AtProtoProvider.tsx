@@ -1,5 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useMemo, useRef } from "react";
+import React, {
+	createContext,
+	useContext,
+	useMemo,
+	useRef,
+} from "react";
 import { ServiceResolver, normalizeBaseUrl } from "../utils/atproto-client";
 import { BlobCache, DidCache } from "../utils/cache";
 
@@ -46,6 +51,7 @@ export function AtProtoProvider({
 			blobCache: new BlobCache(),
 		};
 	}
+
 	const value = useMemo<AtProtoContextValue>(
 		() => ({
 			resolver,
@@ -55,6 +61,7 @@ export function AtProtoProvider({
 		}),
 		[resolver, normalizedPlc],
 	);
+
 	return (
 		<AtProtoContext.Provider value={value}>
 			{children}

@@ -21,17 +21,17 @@ export function isBlobWithCdn(value: unknown): value is BlobWithCdn {
  */
 export function extractCidFromBlob(blob: unknown): string | undefined {
 	if (typeof blob !== "object" || blob === null) return undefined;
-	
+
 	const blobObj = blob as {
 		ref?: { $link?: string };
 		cid?: string;
 	};
-	
+
 	if (typeof blobObj.cid === "string") return blobObj.cid;
 	if (typeof blobObj.ref === "object" && blobObj.ref !== null) {
 		const link = blobObj.ref.$link;
 		if (typeof link === "string") return link;
 	}
-	
+
 	return undefined;
 }

@@ -8,7 +8,6 @@ import type {
 	LeafletDocumentRecord,
 	LeafletPublicationRecord,
 } from "../types/leaflet";
-import type { ColorSchemePreference } from "../hooks/useColorScheme";
 import {
 	parseAtUri,
 	toBlueskyPostUrl,
@@ -45,10 +44,6 @@ export interface LeafletDocumentProps {
 	 * Indicator rendered while data is being fetched from the PDS.
 	 */
 	loadingIndicator?: React.ReactNode;
-	/**
-	 * Preferred color scheme to forward to the renderer.
-	 */
-	colorScheme?: ColorSchemePreference;
 }
 
 /**
@@ -71,14 +66,13 @@ export const LEAFLET_DOCUMENT_COLLECTION = "pub.leaflet.document";
  * @param colorScheme - Preferred color scheme forwarded to the renderer.
  * @returns A JSX subtree that renders a Leaflet document with contextual metadata.
  */
-export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
+export const LeafletDocument: React.FC<LeafletDocumentProps> = React.memo(({
 	did,
 	rkey,
 	record,
 	renderer,
 	fallback,
 	loadingIndicator,
-	colorScheme,
 }) => {
 	const Comp: React.ComponentType<LeafletDocumentRendererInjectedProps> =
 		renderer ?? ((props) => <LeafletDocumentRenderer {...props} />);
@@ -111,7 +105,6 @@ export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 		return (
 			<Comp
 				{...props}
-				colorScheme={colorScheme}
 				did={did}
 				rkey={rkey}
 				canonicalUrl={canonicalUrl}
@@ -142,7 +135,7 @@ export const LeafletDocument: React.FC<LeafletDocumentProps> = ({
 			loadingIndicator={loadingIndicator}
 		/>
 	);
-};
+});
 
 /**
  * Determines the best canonical URL to expose for a Leaflet document.

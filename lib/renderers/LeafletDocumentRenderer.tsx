@@ -1,8 +1,4 @@
 import React, { useMemo, useRef } from "react";
-import {
-	useColorScheme,
-	type ColorSchemePreference,
-} from "../hooks/useColorScheme";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { useBlob } from "../hooks/useBlob";
 import {
@@ -39,7 +35,6 @@ export interface LeafletDocumentRendererProps {
 	record: LeafletDocumentRecord;
 	loading: boolean;
 	error?: Error;
-	colorScheme?: ColorSchemePreference;
 	did: string;
 	rkey: string;
 	canonicalUrl?: string;
@@ -53,15 +48,12 @@ export const LeafletDocumentRenderer: React.FC<
 	record,
 	loading,
 	error,
-	colorScheme = "system",
 	did,
 	rkey,
 	canonicalUrl,
 	publicationBaseUrl,
 	publicationRecord,
 }) => {
-	const scheme = useColorScheme(colorScheme);
-	const palette = scheme === "dark" ? theme.dark : theme.light;
 	const authorDid = record.author?.startsWith("did:")
 		? record.author
 		: undefined;
@@ -136,7 +128,7 @@ export const LeafletDocumentRenderer: React.FC<
 				href={authorHref}
 				target="_blank"
 				rel="noopener noreferrer"
-				style={palette.metaLink}
+				style={{ color: `var(--atproto-color-link)`, textDecoration: "none" }}
 			>
 				{authorLabel}
 			</a>
@@ -155,7 +147,7 @@ export const LeafletDocumentRenderer: React.FC<
 				href={resolvedPublicationRoot}
 				target="_blank"
 				rel="noopener noreferrer"
-				style={palette.metaLink}
+				style={{ color: `var(--atproto-color-link)`, textDecoration: "none" }}
 			>
 				{resolvedPublicationRoot.replace(/^https?:\/\//, "")}
 			</a>,
@@ -167,7 +159,7 @@ export const LeafletDocumentRenderer: React.FC<
 				href={viewUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				style={palette.metaLink}
+				style={{ color: `var(--atproto-color-link)`, textDecoration: "none" }}
 			>
 				View source
 			</a>,
@@ -175,23 +167,23 @@ export const LeafletDocumentRenderer: React.FC<
 	}
 
 	return (
-		<article style={{ ...base.container, ...palette.container }}>
-			<header style={{ ...base.header, ...palette.header }}>
+		<article style={{ ...base.container, background: `var(--atproto-color-bg)`, borderWidth: "1px", borderStyle: "solid", borderColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
+			<header style={{ ...base.header }}>
 				<div style={base.headerContent}>
-					<h1 style={{ ...base.title, ...palette.title }}>
+					<h1 style={{ ...base.title, color: `var(--atproto-color-text)` }}>
 						{record.title}
 					</h1>
 					{record.description && (
-						<p style={{ ...base.subtitle, ...palette.subtitle }}>
+						<p style={{ ...base.subtitle, color: `var(--atproto-color-text-secondary)` }}>
 							{record.description}
 						</p>
 					)}
 				</div>
-				<div style={{ ...base.meta, ...palette.meta }}>
+				<div style={{ ...base.meta, color: `var(--atproto-color-text-secondary)` }}>
 					{metaItems.map((item, idx) => (
 						<React.Fragment key={`meta-${idx}`}>
 							{idx > 0 && (
-								<span style={palette.metaSeparator}>•</span>
+								<span style={{ margin: "0 4px" }}>•</span>
 							)}
 							{item}
 						</React.Fragment>
@@ -204,7 +196,6 @@ export const LeafletDocumentRenderer: React.FC<
 						key={`page-${pageIndex}`}
 						page={page}
 						documentDid={did}
-						colorScheme={scheme}
 					/>
 				))}
 			</div>
@@ -215,8 +206,7 @@ export const LeafletDocumentRenderer: React.FC<
 const LeafletPageRenderer: React.FC<{
 	page: LeafletLinearDocumentPage;
 	documentDid: string;
-	colorScheme: "light" | "dark";
-}> = ({ page, documentDid, colorScheme }) => {
+}> = ({ page, documentDid }) => {
 	if (!page.blocks?.length) return null;
 	return (
 		<div style={base.page}>
@@ -225,7 +215,6 @@ const LeafletPageRenderer: React.FC<{
 					key={`block-${idx}`}
 					wrapper={blockWrapper}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 					isFirst={idx === 0}
 				/>
 			))}
@@ -236,14 +225,12 @@ const LeafletPageRenderer: React.FC<{
 interface LeafletBlockRendererProps {
 	wrapper: LeafletLinearDocumentBlock;
 	documentDid: string;
-	colorScheme: "light" | "dark";
 	isFirst?: boolean;
 }
 
 const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 	wrapper,
 	documentDid,
-	colorScheme,
 	isFirst,
 }) => {
 	const block = wrapper.block;
@@ -258,7 +245,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 				<LeafletHeaderBlockView
 					block={block}
 					alignment={alignment}
-					colorScheme={colorScheme}
 					isFirst={isFirst}
 				/>
 			);
@@ -267,7 +253,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 				<LeafletBlockquoteBlockView
 					block={block}
 					alignment={alignment}
-					colorScheme={colorScheme}
 					isFirst={isFirst}
 				/>
 			);
@@ -277,7 +262,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 					block={block}
 					alignment={alignment}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.unorderedList":
@@ -286,7 +270,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 					block={block}
 					alignment={alignment}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.website":
@@ -295,7 +278,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 					block={block}
 					alignment={alignment}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.iframe":
@@ -307,7 +289,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 				<LeafletMathBlockView
 					block={block}
 					alignment={alignment}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.code":
@@ -315,21 +296,18 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 				<LeafletCodeBlockView
 					block={block}
 					alignment={alignment}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.horizontalRule":
 			return (
 				<LeafletHorizontalRuleBlockView
 					alignment={alignment}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.bskyPost":
 			return (
 				<LeafletBskyPostBlockView
 					block={block}
-					colorScheme={colorScheme}
 				/>
 			);
 		case "pub.leaflet.blocks.text":
@@ -338,7 +316,6 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 				<LeafletTextBlockView
 					block={block as LeafletTextBlock}
 					alignment={alignment}
-					colorScheme={colorScheme}
 					isFirst={isFirst}
 				/>
 			);
@@ -348,9 +325,8 @@ const LeafletBlockRenderer: React.FC<LeafletBlockRendererProps> = ({
 const LeafletTextBlockView: React.FC<{
 	block: LeafletTextBlock;
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
 	isFirst?: boolean;
-}> = ({ block, alignment, colorScheme, isFirst }) => {
+}> = ({ block, alignment, isFirst }) => {
 	const segments = useMemo(
 		() => createFacetedSegments(block.plaintext, block.facets),
 		[block.plaintext, block.facets],
@@ -359,10 +335,9 @@ const LeafletTextBlockView: React.FC<{
 	if (!textContent.trim() && segments.length === 0) {
 		return null;
 	}
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
 	const style: React.CSSProperties = {
 		...base.paragraph,
-		...palette.paragraph,
+		color: `var(--atproto-color-text)`,
 		...(alignment ? { textAlign: alignment } : undefined),
 		...(isFirst ? { marginTop: 0 } : undefined),
 	};
@@ -370,7 +345,7 @@ const LeafletTextBlockView: React.FC<{
 		<p style={style}>
 			{segments.map((segment, idx) => (
 				<React.Fragment key={`text-${idx}`}>
-					{renderSegment(segment, colorScheme)}
+					{renderSegment(segment)}
 				</React.Fragment>
 			))}
 		</p>
@@ -380,10 +355,8 @@ const LeafletTextBlockView: React.FC<{
 const LeafletHeaderBlockView: React.FC<{
 	block: LeafletHeaderBlock;
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
 	isFirst?: boolean;
-}> = ({ block, alignment, colorScheme, isFirst }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment, isFirst }) => {
 	const level =
 		block.level && block.level >= 1 && block.level <= 6 ? block.level : 2;
 	const segments = useMemo(
@@ -400,10 +373,10 @@ const LeafletHeaderBlockView: React.FC<{
 	const headingTag = (["h1", "h2", "h3", "h4", "h5", "h6"] as const)[
 		normalizedLevel - 1
 	];
-	const headingStyles = palette.heading[normalizedLevel];
 	const style: React.CSSProperties = {
 		...base.heading,
-		...headingStyles,
+		color: `var(--atproto-color-text)`,
+		fontSize: normalizedLevel === 1 ? 30 : normalizedLevel === 2 ? 28 : normalizedLevel === 3 ? 24 : normalizedLevel === 4 ? 20 : normalizedLevel === 5 ? 18 : 16,
 		...(alignment ? { textAlign: alignment } : undefined),
 		...(isFirst ? { marginTop: 0 } : undefined),
 	};
@@ -413,7 +386,7 @@ const LeafletHeaderBlockView: React.FC<{
 		{ style },
 		segments.map((segment, idx) => (
 			<React.Fragment key={`header-${idx}`}>
-				{renderSegment(segment, colorScheme)}
+				{renderSegment(segment)}
 			</React.Fragment>
 		)),
 	);
@@ -422,9 +395,8 @@ const LeafletHeaderBlockView: React.FC<{
 const LeafletBlockquoteBlockView: React.FC<{
 	block: LeafletBlockquoteBlock;
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
 	isFirst?: boolean;
-}> = ({ block, alignment, colorScheme, isFirst }) => {
+}> = ({ block, alignment, isFirst }) => {
 	const segments = useMemo(
 		() => createFacetedSegments(block.plaintext, block.facets),
 		[block.plaintext, block.facets],
@@ -433,19 +405,22 @@ const LeafletBlockquoteBlockView: React.FC<{
 	if (!textContent.trim() && segments.length === 0) {
 		return null;
 	}
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
 	return (
 		<blockquote
 			style={{
 				...base.blockquote,
-				...palette.blockquote,
+				background: `var(--atproto-color-bg-elevated)`,
+				borderLeftWidth: "4px",
+				borderLeftStyle: "solid",
+				borderColor: `var(--atproto-color-border)`,
+				color: `var(--atproto-color-text)`,
 				...(alignment ? { textAlign: alignment } : undefined),
 				...(isFirst ? { marginTop: 0 } : undefined),
 			}}
 		>
 			{segments.map((segment, idx) => (
 				<React.Fragment key={`quote-${idx}`}>
-					{renderSegment(segment, colorScheme)}
+					{renderSegment(segment)}
 				</React.Fragment>
 			))}
 		</blockquote>
@@ -456,9 +431,7 @@ const LeafletImageBlockView: React.FC<{
 	block: LeafletImageBlock;
 	alignment?: React.CSSProperties["textAlign"];
 	documentDid: string;
-	colorScheme: "light" | "dark";
-}> = ({ block, alignment, documentDid, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment, documentDid }) => {
 	const cid = block.image?.ref?.$link ?? block.image?.cid;
 	const { url, loading, error } = useBlob(documentDid, cid);
 	const aspectRatio =
@@ -470,14 +443,13 @@ const LeafletImageBlockView: React.FC<{
 		<figure
 			style={{
 				...base.figure,
-				...palette.figure,
 				...(alignment ? { textAlign: alignment } : undefined),
 			}}
 		>
 			<div
 				style={{
 					...base.imageWrapper,
-					...palette.imageWrapper,
+					background: `var(--atproto-color-bg-elevated)`,
 					...(aspectRatio ? { aspectRatio } : {}),
 				}}
 			>
@@ -485,13 +457,13 @@ const LeafletImageBlockView: React.FC<{
 					<img
 						src={url}
 						alt={block.alt ?? ""}
-						style={{ ...base.image, ...palette.image }}
+						style={{ ...base.image }}
 					/>
 				) : (
 					<div
 						style={{
 							...base.imagePlaceholder,
-							...palette.imagePlaceholder,
+							color: `var(--atproto-color-text-secondary)`,
 						}}
 					>
 						{loading
@@ -503,7 +475,7 @@ const LeafletImageBlockView: React.FC<{
 				)}
 			</div>
 			{block.alt && block.alt.trim().length > 0 && (
-				<figcaption style={{ ...base.caption, ...palette.caption }}>
+				<figcaption style={{ ...base.caption, color: `var(--atproto-color-text-secondary)` }}>
 					{block.alt}
 				</figcaption>
 			)}
@@ -515,14 +487,12 @@ const LeafletListBlockView: React.FC<{
 	block: LeafletUnorderedListBlock;
 	alignment?: React.CSSProperties["textAlign"];
 	documentDid: string;
-	colorScheme: "light" | "dark";
-}> = ({ block, alignment, documentDid, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment, documentDid }) => {
 	return (
 		<ul
 			style={{
 				...base.list,
-				...palette.list,
+				color: `var(--atproto-color-text)`,
 				...(alignment ? { textAlign: alignment } : undefined),
 			}}
 		>
@@ -531,7 +501,6 @@ const LeafletListBlockView: React.FC<{
 					key={`list-item-${idx}`}
 					item={child}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 					alignment={alignment}
 				/>
 			))}
@@ -542,9 +511,8 @@ const LeafletListBlockView: React.FC<{
 const LeafletListItemRenderer: React.FC<{
 	item: LeafletListItem;
 	documentDid: string;
-	colorScheme: "light" | "dark";
 	alignment?: React.CSSProperties["textAlign"];
-}> = ({ item, documentDid, colorScheme, alignment }) => {
+}> = ({ item, documentDid, alignment }) => {
 	return (
 		<li
 			style={{
@@ -555,7 +523,6 @@ const LeafletListItemRenderer: React.FC<{
 			<div>
 				<LeafletInlineBlock
 					block={item.content}
-					colorScheme={colorScheme}
 					documentDid={documentDid}
 					alignment={alignment}
 				/>
@@ -572,7 +539,6 @@ const LeafletListItemRenderer: React.FC<{
 							key={`nested-${idx}`}
 							item={child}
 							documentDid={documentDid}
-							colorScheme={colorScheme}
 							alignment={alignment}
 						/>
 					))}
@@ -584,16 +550,14 @@ const LeafletListItemRenderer: React.FC<{
 
 const LeafletInlineBlock: React.FC<{
 	block: LeafletBlock;
-	colorScheme: "light" | "dark";
 	documentDid: string;
 	alignment?: React.CSSProperties["textAlign"];
-}> = ({ block, colorScheme, documentDid, alignment }) => {
+}> = ({ block, documentDid, alignment }) => {
 	switch (block.$type) {
 		case "pub.leaflet.blocks.header":
 			return (
 				<LeafletHeaderBlockView
 					block={block as LeafletHeaderBlock}
-					colorScheme={colorScheme}
 					alignment={alignment}
 				/>
 			);
@@ -601,7 +565,6 @@ const LeafletInlineBlock: React.FC<{
 			return (
 				<LeafletBlockquoteBlockView
 					block={block as LeafletBlockquoteBlock}
-					colorScheme={colorScheme}
 					alignment={alignment}
 				/>
 			);
@@ -610,7 +573,6 @@ const LeafletInlineBlock: React.FC<{
 				<LeafletImageBlockView
 					block={block as LeafletImageBlock}
 					documentDid={documentDid}
-					colorScheme={colorScheme}
 					alignment={alignment}
 				/>
 			);
@@ -618,7 +580,6 @@ const LeafletInlineBlock: React.FC<{
 			return (
 				<LeafletTextBlockView
 					block={block as LeafletTextBlock}
-					colorScheme={colorScheme}
 					alignment={alignment}
 				/>
 			);
@@ -629,9 +590,7 @@ const LeafletWebsiteBlockView: React.FC<{
 	block: LeafletWebsiteBlock;
 	alignment?: React.CSSProperties["textAlign"];
 	documentDid: string;
-	colorScheme: "light" | "dark";
-}> = ({ block, alignment, documentDid, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment, documentDid }) => {
 	const previewCid =
 		block.previewImage?.ref?.$link ?? block.previewImage?.cid;
 	const { url, loading, error } = useBlob(documentDid, previewCid);
@@ -643,7 +602,11 @@ const LeafletWebsiteBlockView: React.FC<{
 			rel="noopener noreferrer"
 			style={{
 				...base.linkCard,
-				...palette.linkCard,
+				borderWidth: "1px",
+				borderStyle: "solid",
+				borderColor: `var(--atproto-color-border)`,
+				background: `var(--atproto-color-bg-elevated)`,
+				color: `var(--atproto-color-text)`,
 				...(alignment ? { textAlign: alignment } : undefined),
 			}}
 		>
@@ -651,13 +614,14 @@ const LeafletWebsiteBlockView: React.FC<{
 				<img
 					src={url}
 					alt={block.title ?? "Website preview"}
-					style={{ ...base.linkPreview, ...palette.linkPreview }}
+					style={{ ...base.linkPreview }}
 				/>
 			) : (
 				<div
 					style={{
 						...base.linkPreviewPlaceholder,
-						...palette.linkPreviewPlaceholder,
+						background: `var(--atproto-color-bg-elevated)`,
+						color: `var(--atproto-color-text-secondary)`,
 					}}
 				>
 					{loading ? "Loading preview…" : "Open link"}
@@ -665,12 +629,12 @@ const LeafletWebsiteBlockView: React.FC<{
 			)}
 			<div style={base.linkContent}>
 				{block.title && (
-					<strong style={palette.linkTitle}>{block.title}</strong>
+					<strong style={{ fontSize: 16, color: `var(--atproto-color-text)` }}>{block.title}</strong>
 				)}
 				{block.description && (
-					<p style={palette.linkDescription}>{block.description}</p>
+					<p style={{ margin: 0, fontSize: 14, color: `var(--atproto-color-text-secondary)`, lineHeight: 1.5 }}>{block.description}</p>
 				)}
-				<span style={palette.linkUrl}>{block.src}</span>
+				<span style={{ fontSize: 13, color: `var(--atproto-color-link)`, wordBreak: "break-all" }}>{block.src}</span>
 			</div>
 		</a>
 	);
@@ -701,14 +665,14 @@ const LeafletIframeBlockView: React.FC<{
 const LeafletMathBlockView: React.FC<{
 	block: LeafletMathBlock;
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
-}> = ({ block, alignment, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment }) => {
 	return (
 		<pre
 			style={{
 				...base.math,
-				...palette.math,
+				background: `var(--atproto-color-bg-elevated)`,
+				color: `var(--atproto-color-text)`,
+				border: `1px solid var(--atproto-color-border)`,
 				...(alignment ? { textAlign: alignment } : undefined),
 			}}
 		>
@@ -720,9 +684,7 @@ const LeafletMathBlockView: React.FC<{
 const LeafletCodeBlockView: React.FC<{
 	block: LeafletCodeBlock;
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
-}> = ({ block, alignment, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ block, alignment }) => {
 	const codeRef = useRef<HTMLElement | null>(null);
 	const langClass = block.language
 		? `language-${block.language.toLowerCase()}`
@@ -731,7 +693,8 @@ const LeafletCodeBlockView: React.FC<{
 		<pre
 			style={{
 				...base.code,
-				...palette.code,
+				background: `var(--atproto-color-bg)`,
+				color: `var(--atproto-color-text)`,
 				...(alignment ? { textAlign: alignment } : undefined),
 			}}
 		>
@@ -744,14 +707,14 @@ const LeafletCodeBlockView: React.FC<{
 
 const LeafletHorizontalRuleBlockView: React.FC<{
 	alignment?: React.CSSProperties["textAlign"];
-	colorScheme: "light" | "dark";
-}> = ({ alignment, colorScheme }) => {
-	const palette = colorScheme === "dark" ? theme.dark : theme.light;
+}> = ({ alignment }) => {
 	return (
 		<hr
 			style={{
 				...base.hr,
-				...palette.hr,
+				borderTopWidth: "1px",
+				borderTopStyle: "solid",
+				borderColor: `var(--atproto-color-border)`,
 				marginLeft: alignment ? "auto" : undefined,
 				marginRight: alignment ? "auto" : undefined,
 			}}
@@ -761,8 +724,7 @@ const LeafletHorizontalRuleBlockView: React.FC<{
 
 const LeafletBskyPostBlockView: React.FC<{
 	block: LeafletBskyPostBlock;
-	colorScheme: "light" | "dark";
-}> = ({ block, colorScheme }) => {
+}> = ({ block }) => {
 	const parsed = parseAtUri(block.postRef?.uri);
 	if (!parsed) {
 		return (
@@ -773,7 +735,6 @@ const LeafletBskyPostBlockView: React.FC<{
 		<BlueskyPost
 			did={parsed.did}
 			rkey={parsed.rkey}
-			colorScheme={colorScheme}
 			iconPlacement="linkInline"
 		/>
 	);
@@ -855,7 +816,7 @@ function createFacetedSegments(
 			]);
 		}
 	}
-	const sortedBounds = [...boundaries].sort((a, b) => a - b);
+	const sortedBounds = Array.from(boundaries).sort((a, b) => a - b);
 	const segments: Segment[] = [];
 	let active: LeafletRichTextFeature[] = [];
 	for (let i = 0; i < sortedBounds.length - 1; i++) {
@@ -915,7 +876,6 @@ function sliceByCharRange(text: string, start: number, end: number): string {
 
 function renderSegment(
 	segment: Segment,
-	colorScheme: "light" | "dark",
 ): React.ReactNode {
 	const parts = segment.text.split("\n");
 	return parts.flatMap((part, idx) => {
@@ -924,7 +884,6 @@ function renderSegment(
 			part.length ? part : "\u00a0",
 			segment.features,
 			key,
-			colorScheme,
 		);
 		if (idx === parts.length - 1) return wrapped;
 		return [wrapped, <br key={`${key}-br`} />];
@@ -935,7 +894,6 @@ function applyFeatures(
 	content: React.ReactNode,
 	features: LeafletRichTextFeature[],
 	key: string,
-	colorScheme: "light" | "dark",
 ): React.ReactNode {
 	if (!features?.length)
 		return <React.Fragment key={key}>{content}</React.Fragment>;
@@ -947,7 +905,6 @@ function applyFeatures(
 						child,
 						feature,
 						`${key}-feature-${idx}`,
-						colorScheme,
 					),
 				content,
 			)}
@@ -959,7 +916,6 @@ function wrapFeature(
 	child: React.ReactNode,
 	feature: LeafletRichTextFeature,
 	key: string,
-	colorScheme: "light" | "dark",
 ): React.ReactNode {
 	switch (feature.$type) {
 		case "pub.leaflet.richtext.facet#link":
@@ -969,20 +925,25 @@ function wrapFeature(
 					href={feature.uri}
 					target="_blank"
 					rel="noopener noreferrer"
-					style={linkStyles[colorScheme]}
+					style={{ color: `var(--atproto-color-link)`, textDecoration: "underline" }}
 				>
 					{child}
 				</a>
 			);
 		case "pub.leaflet.richtext.facet#code":
 			return (
-				<code key={key} style={inlineCodeStyles[colorScheme]}>
+				<code key={key} style={{
+					fontFamily: 'Menlo, Consolas, "SFMono-Regular", ui-monospace',
+					background: `var(--atproto-color-bg-elevated)`,
+					padding: "0 4px",
+					borderRadius: 4,
+				}}>
 					{child}
 				</code>
 			);
 		case "pub.leaflet.richtext.facet#highlight":
 			return (
-				<mark key={key} style={highlightStyles[colorScheme]}>
+				<mark key={key} style={{ background: `var(--atproto-color-highlight)` }}>
 					{child}
 				</mark>
 			);
@@ -1020,7 +981,9 @@ const base: Record<string, React.CSSProperties> = {
 		gap: 24,
 		padding: "24px 28px",
 		borderRadius: 20,
-		border: "1px solid transparent",
+		borderWidth: "1px",
+		borderStyle: "solid",
+		borderColor: "transparent",
 		maxWidth: 720,
 		width: "100%",
 		fontFamily:
@@ -1075,7 +1038,8 @@ const base: Record<string, React.CSSProperties> = {
 	blockquote: {
 		margin: "1em 0 0",
 		padding: "0.6em 1em",
-		borderLeft: "4px solid",
+		borderLeftWidth: "4px",
+		borderLeftStyle: "solid",
 	},
 	figure: {
 		margin: "1.2em 0 0",
@@ -1123,7 +1087,8 @@ const base: Record<string, React.CSSProperties> = {
 	},
 	linkCard: {
 		borderRadius: 16,
-		border: "1px solid",
+		borderWidth: "1px",
+		borderStyle: "solid",
 		display: "flex",
 		flexDirection: "column",
 		overflow: "hidden",
@@ -1170,7 +1135,8 @@ const base: Record<string, React.CSSProperties> = {
 	},
 	hr: {
 		border: 0,
-		borderTop: "1px solid",
+		borderTopWidth: "1px",
+		borderTopStyle: "solid",
 		margin: "24px 0 0",
 	},
 	embedFallback: {
@@ -1180,229 +1146,5 @@ const base: Record<string, React.CSSProperties> = {
 		fontSize: 14,
 	},
 };
-
-const theme = {
-	light: {
-		container: {
-			background: "#ffffff",
-			borderColor: "#e2e8f0",
-			color: "#0f172a",
-			boxShadow: "0 4px 18px rgba(15, 23, 42, 0.06)",
-		},
-		header: {},
-		title: {
-			color: "#0f172a",
-		},
-		subtitle: {
-			color: "#475569",
-		},
-		meta: {
-			color: "#64748b",
-		},
-		metaLink: {
-			color: "#2563eb",
-			textDecoration: "none",
-		} satisfies React.CSSProperties,
-		metaSeparator: {
-			margin: "0 4px",
-		} satisfies React.CSSProperties,
-		paragraph: {
-			color: "#1f2937",
-		},
-		heading: {
-			1: { color: "#0f172a", fontSize: 30 },
-			2: { color: "#0f172a", fontSize: 28 },
-			3: { color: "#0f172a", fontSize: 24 },
-			4: { color: "#0f172a", fontSize: 20 },
-			5: { color: "#0f172a", fontSize: 18 },
-			6: { color: "#0f172a", fontSize: 16 },
-		} satisfies Record<number, React.CSSProperties>,
-		blockquote: {
-			background: "#f8fafc",
-			borderColor: "#cbd5f5",
-			color: "#1f2937",
-		},
-		figure: {},
-		imageWrapper: {
-			background: "#e2e8f0",
-		},
-		image: {},
-		imagePlaceholder: {
-			color: "#475569",
-		},
-		caption: {
-			color: "#475569",
-		},
-		list: {
-			color: "#1f2937",
-		},
-		linkCard: {
-			borderColor: "#e2e8f0",
-			background: "#f8fafc",
-			color: "#0f172a",
-		},
-		linkPreview: {},
-		linkPreviewPlaceholder: {
-			background: "#e2e8f0",
-			color: "#475569",
-		},
-		linkTitle: {
-			fontSize: 16,
-			color: "#0f172a",
-		} satisfies React.CSSProperties,
-		linkDescription: {
-			margin: 0,
-			fontSize: 14,
-			color: "#475569",
-			lineHeight: 1.5,
-		} satisfies React.CSSProperties,
-		linkUrl: {
-			fontSize: 13,
-			color: "#2563eb",
-			wordBreak: "break-all",
-		} satisfies React.CSSProperties,
-		math: {
-			background: "#f1f5f9",
-			color: "#1f2937",
-			border: "1px solid #e2e8f0",
-		},
-		code: {
-			background: "#0f172a",
-			color: "#e2e8f0",
-		},
-		hr: {
-			borderColor: "#e2e8f0",
-		},
-	},
-	dark: {
-		container: {
-			background: "rgba(15, 23, 42, 0.6)",
-			borderColor: "rgba(148, 163, 184, 0.3)",
-			color: "#e2e8f0",
-			backdropFilter: "blur(8px)",
-			boxShadow: "0 10px 40px rgba(2, 6, 23, 0.45)",
-		},
-		header: {},
-		title: {
-			color: "#f8fafc",
-		},
-		subtitle: {
-			color: "#cbd5f5",
-		},
-		meta: {
-			color: "#94a3b8",
-		},
-		metaLink: {
-			color: "#38bdf8",
-			textDecoration: "none",
-		} satisfies React.CSSProperties,
-		metaSeparator: {
-			margin: "0 4px",
-		} satisfies React.CSSProperties,
-		paragraph: {
-			color: "#e2e8f0",
-		},
-		heading: {
-			1: { color: "#f8fafc", fontSize: 30 },
-			2: { color: "#f8fafc", fontSize: 28 },
-			3: { color: "#f8fafc", fontSize: 24 },
-			4: { color: "#e2e8f0", fontSize: 20 },
-			5: { color: "#e2e8f0", fontSize: 18 },
-			6: { color: "#e2e8f0", fontSize: 16 },
-		} satisfies Record<number, React.CSSProperties>,
-		blockquote: {
-			background: "rgba(30, 41, 59, 0.6)",
-			borderColor: "#38bdf8",
-			color: "#e2e8f0",
-		},
-		figure: {},
-		imageWrapper: {
-			background: "#1e293b",
-		},
-		image: {},
-		imagePlaceholder: {
-			color: "#94a3b8",
-		},
-		caption: {
-			color: "#94a3b8",
-		},
-		list: {
-			color: "#f1f5f9",
-		},
-		linkCard: {
-			borderColor: "rgba(148, 163, 184, 0.3)",
-			background: "rgba(15, 23, 42, 0.8)",
-			color: "#e2e8f0",
-		},
-		linkPreview: {},
-		linkPreviewPlaceholder: {
-			background: "#1e293b",
-			color: "#94a3b8",
-		},
-		linkTitle: {
-			fontSize: 16,
-			color: "#e0f2fe",
-		} satisfies React.CSSProperties,
-		linkDescription: {
-			margin: 0,
-			fontSize: 14,
-			color: "#cbd5f5",
-			lineHeight: 1.5,
-		} satisfies React.CSSProperties,
-		linkUrl: {
-			fontSize: 13,
-			color: "#38bdf8",
-			wordBreak: "break-all",
-		} satisfies React.CSSProperties,
-		math: {
-			background: "rgba(15, 23, 42, 0.8)",
-			color: "#e2e8f0",
-			border: "1px solid rgba(148, 163, 184, 0.35)",
-		},
-		code: {
-			background: "#020617",
-			color: "#e2e8f0",
-		},
-		hr: {
-			borderColor: "rgba(148, 163, 184, 0.3)",
-		},
-	},
-} as const;
-
-const linkStyles = {
-	light: {
-		color: "#2563eb",
-		textDecoration: "underline",
-	} satisfies React.CSSProperties,
-	dark: {
-		color: "#38bdf8",
-		textDecoration: "underline",
-	} satisfies React.CSSProperties,
-} as const;
-
-const inlineCodeStyles = {
-	light: {
-		fontFamily: 'Menlo, Consolas, "SFMono-Regular", ui-monospace',
-		background: "#f1f5f9",
-		padding: "0 4px",
-		borderRadius: 4,
-	} satisfies React.CSSProperties,
-	dark: {
-		fontFamily: 'Menlo, Consolas, "SFMono-Regular", ui-monospace',
-		background: "#1e293b",
-		padding: "0 4px",
-		borderRadius: 4,
-	} satisfies React.CSSProperties,
-} as const;
-
-const highlightStyles = {
-	light: {
-		background: "#fef08a",
-	} satisfies React.CSSProperties,
-	dark: {
-		background: "#facc15",
-		color: "#0f172a",
-	} satisfies React.CSSProperties,
-} as const;
 
 export default LeafletDocumentRenderer;

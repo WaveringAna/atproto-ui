@@ -1,10 +1,6 @@
 import React from "react";
 import type { FeedPostRecord } from "../types/bluesky";
 import {
-	useColorScheme,
-	type ColorSchemePreference,
-} from "../hooks/useColorScheme";
-import {
 	parseAtUri,
 	toBlueskyPostUrl,
 	formatDidForLabel,
@@ -23,7 +19,6 @@ export interface BlueskyPostRendererProps {
 	authorHandle?: string;
 	authorDisplayName?: string;
 	avatarUrl?: string;
-	colorScheme?: ColorSchemePreference;
 	authorDid?: string;
 	embed?: React.ReactNode;
 	iconPlacement?: "cardBottomRight" | "timestamp" | "linkInline";
@@ -38,14 +33,12 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 	authorDisplayName,
 	authorHandle,
 	avatarUrl,
-	colorScheme = "system",
 	authorDid,
 	embed,
 	iconPlacement = "timestamp",
 	showIcon = true,
 	atUri,
 }) => {
-	const scheme = useColorScheme(colorScheme);
 	const replyParentUri = record.reply?.parent?.uri;
 	const replyTarget = replyParentUri ? parseAtUri(replyParentUri) : undefined;
 	const { handle: parentHandle, loading: parentHandleLoading } =
@@ -58,8 +51,6 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 			</div>
 		);
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
-
-	const palette = scheme === "dark" ? themeStyles.dark : themeStyles.light;
 
 	const text = record.text;
 	const createdDate = new Date(record.createdAt);
@@ -74,7 +65,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 		: undefined;
 
 	const makeIcon = () => (showIcon ? <BlueskyIcon size={16} /> : null);
-	const resolvedEmbed = embed ?? createAutoEmbed(record, authorDid, scheme);
+	const resolvedEmbed = embed ?? createAutoEmbed(record, authorDid);
 	const parsedSelf = atUri ? parseAtUri(atUri) : undefined;
 	const postUrl = parsedSelf ? toBlueskyPostUrl(parsedSelf) : undefined;
 	const cardPadding =
@@ -83,7 +74,9 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 			: 12;
 	const cardStyle: React.CSSProperties = {
 		...baseStyles.card,
-		...palette.card,
+		border: `1px solid var(--atproto-color-border)`,
+		background: `var(--atproto-color-bg)`,
+		color: `var(--atproto-color-text)`,
 		...(iconPlacement === "cardBottomRight" && showIcon
 			? { paddingBottom: cardPadding + 16 }
 			: {}),
@@ -102,7 +95,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 					<div
 						style={{
 							...baseStyles.avatarPlaceholder,
-							...palette.avatarPlaceholder,
+							background: `var(--atproto-color-border-subtle)`,
 						}}
 						aria-hidden
 					/>
@@ -111,7 +104,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 					<strong style={{ fontSize: 14 }}>{primaryName}</strong>
 					{authorDisplayName && authorHandle && (
 						<span
-							style={{ ...baseStyles.handle, ...palette.handle }}
+							style={{ ...baseStyles.handle, color: `var(--atproto-color-text-secondary)` }}
 						>
 							@{authorHandle}
 						</span>
@@ -122,7 +115,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 				)}
 			</header>
 			{replyHref && replyLabel && (
-				<div style={{ ...baseStyles.replyLine, ...palette.replyLine }}>
+				<div style={{ ...baseStyles.replyLine, color: `var(--atproto-color-text-secondary)` }}>
 					Replying to{" "}
 					<a
 						href={replyHref}
@@ -130,7 +123,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 						rel="noopener noreferrer"
 						style={{
 							...baseStyles.replyLink,
-							...palette.replyLink,
+							color: `var(--atproto-color-link)`,
 						}}
 					>
 						{replyLabel}
@@ -138,7 +131,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 				</div>
 			)}
 			<div style={baseStyles.body}>
-				<p style={{ ...baseStyles.text, ...palette.text }}>{text}</p>
+				<p style={{ ...baseStyles.text, color: `var(--atproto-color-text)` }}>{text}</p>
 				{record.facets && record.facets.length > 0 && (
 					<div style={baseStyles.facets}>
 						{record.facets.map((_, idx) => (
@@ -146,7 +139,8 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 								key={idx}
 								style={{
 									...baseStyles.facetTag,
-									...palette.facetTag,
+									background: `var(--atproto-color-bg-secondary)`,
+									color: `var(--atproto-color-text-secondary)`,
 								}}
 							>
 								facet
@@ -156,7 +150,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 				)}
 				<div style={baseStyles.timestampRow}>
 					<time
-						style={{ ...baseStyles.time, ...palette.time }}
+						style={{ ...baseStyles.time, color: `var(--atproto-color-text-muted)` }}
 						dateTime={record.createdAt}
 					>
 						{created}
@@ -169,7 +163,7 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 								rel="noopener noreferrer"
 								style={{
 									...baseStyles.postLink,
-									...palette.postLink,
+									color: `var(--atproto-color-link)`,
 								}}
 							>
 								View on Bluesky
@@ -186,7 +180,9 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 					<div
 						style={{
 							...baseStyles.embedContainer,
-							...palette.embedContainer,
+							border: `1px solid var(--atproto-color-border)`,
+							borderRadius: 12,
+							background: `var(--atproto-color-bg-elevated)`,
 						}}
 					>
 						{resolvedEmbed}
@@ -313,82 +309,7 @@ const baseStyles: Record<string, React.CSSProperties> = {
 	},
 };
 
-const themeStyles = {
-	light: {
-		card: {
-			border: "1px solid #e2e8f0",
-			background: "#ffffff",
-			color: "#0f172a",
-		},
-		avatarPlaceholder: {
-			background: "#cbd5e1",
-		},
-		handle: {
-			color: "#64748b",
-		},
-		time: {
-			color: "#94a3b8",
-		},
-		text: {
-			color: "#0f172a",
-		},
-		facetTag: {
-			background: "#f1f5f9",
-			color: "#475569",
-		},
-		replyLine: {
-			color: "#475569",
-		},
-		replyLink: {
-			color: "#2563eb",
-		},
-		embedContainer: {
-			border: "1px solid #e2e8f0",
-			borderRadius: 12,
-			background: "#f8fafc",
-		},
-		postLink: {
-			color: "#2563eb",
-		},
-	},
-	dark: {
-		card: {
-			border: "1px solid #1e293b",
-			background: "#0f172a",
-			color: "#e2e8f0",
-		},
-		avatarPlaceholder: {
-			background: "#1e293b",
-		},
-		handle: {
-			color: "#cbd5f5",
-		},
-		time: {
-			color: "#94a3ff",
-		},
-		text: {
-			color: "#e2e8f0",
-		},
-		facetTag: {
-			background: "#1e293b",
-			color: "#e0f2fe",
-		},
-		replyLine: {
-			color: "#cbd5f5",
-		},
-		replyLink: {
-			color: "#38bdf8",
-		},
-		embedContainer: {
-			border: "1px solid #1e293b",
-			borderRadius: 12,
-			background: "#0b1120",
-		},
-		postLink: {
-			color: "#38bdf8",
-		},
-	},
-} satisfies Record<"light" | "dark", Record<string, React.CSSProperties>>;
+// Theme styles removed - now using CSS variables for theming
 
 function formatReplyLabel(
 	target: ParsedAtUri,
@@ -403,7 +324,6 @@ function formatReplyLabel(
 function createAutoEmbed(
 	record: FeedPostRecord,
 	authorDid: string | undefined,
-	scheme: "light" | "dark",
 ): React.ReactNode {
 	const embed = record.embed as { $type?: string } | undefined;
 	if (!embed) return null;
@@ -412,7 +332,6 @@ function createAutoEmbed(
 			<ImagesEmbed
 				embed={embed as ImagesEmbedType}
 				did={authorDid}
-				scheme={scheme}
 			/>
 		);
 	}
@@ -423,7 +342,6 @@ function createAutoEmbed(
 				<ImagesEmbed
 					embed={media as ImagesEmbedType}
 					did={authorDid}
-					scheme={scheme}
 				/>
 			);
 		}
@@ -458,13 +376,11 @@ type RecordWithMediaEmbed = {
 interface ImagesEmbedProps {
 	embed: ImagesEmbedType;
 	did?: string;
-	scheme: "light" | "dark";
 }
 
-const ImagesEmbed: React.FC<ImagesEmbedProps> = ({ embed, did, scheme }) => {
+const ImagesEmbed: React.FC<ImagesEmbedProps> = ({ embed, did }) => {
 	if (!embed.images || embed.images.length === 0) return null;
-	const palette =
-		scheme === "dark" ? imagesPalette.dark : imagesPalette.light;
+
 	const columns =
 		embed.images.length > 1
 			? "repeat(auto-fit, minmax(160px, 1fr))"
@@ -473,12 +389,12 @@ const ImagesEmbed: React.FC<ImagesEmbedProps> = ({ embed, did, scheme }) => {
 		<div
 			style={{
 				...imagesBase.container,
-				...palette.container,
+				background: `var(--atproto-color-bg-elevated)`,
 				gridTemplateColumns: columns,
 			}}
 		>
-			{embed.images.map((image, idx) => (
-				<PostImage key={idx} image={image} did={did} scheme={scheme} />
+			{embed.images.map((img, idx) => (
+				<PostImage key={idx} image={img} did={did} />
 			))}
 		</div>
 	);
@@ -487,29 +403,27 @@ const ImagesEmbed: React.FC<ImagesEmbedProps> = ({ embed, did, scheme }) => {
 interface PostImageProps {
 	image: ImagesEmbedType["images"][number];
 	did?: string;
-	scheme: "light" | "dark";
 }
 
-const PostImage: React.FC<PostImageProps> = ({ image, did, scheme }) => {
+const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
 	const imageBlob = image.image;
 	const cdnUrl = isBlobWithCdn(imageBlob) ? imageBlob.cdnUrl : undefined;
 	const cid = cdnUrl ? undefined : extractCidFromBlob(imageBlob);
 	const { url: urlFromBlob, loading, error } = useBlob(did, cid);
 	const url = cdnUrl || urlFromBlob;
 	const alt = image.alt?.trim() || "Bluesky attachment";
-	const palette =
-		scheme === "dark" ? imagesPalette.dark : imagesPalette.light;
+
 	const aspect =
 		image.aspectRatio && image.aspectRatio.height > 0
 			? `${image.aspectRatio.width} / ${image.aspectRatio.height}`
 			: undefined;
 
 	return (
-		<figure style={{ ...imagesBase.item, ...palette.item }}>
+		<figure style={{ ...imagesBase.item, background: `var(--atproto-color-bg-elevated)` }}>
 			<div
 				style={{
 					...imagesBase.media,
-					...palette.media,
+					background: `var(--atproto-color-image-bg)`,
 					aspectRatio: aspect,
 				}}
 			>
@@ -519,7 +433,7 @@ const PostImage: React.FC<PostImageProps> = ({ image, did, scheme }) => {
 					<div
 						style={{
 							...imagesBase.placeholder,
-							...palette.placeholder,
+							color: `var(--atproto-color-text-muted)`,
 						}}
 					>
 						{loading
@@ -532,7 +446,7 @@ const PostImage: React.FC<PostImageProps> = ({ image, did, scheme }) => {
 			</div>
 			{image.alt && image.alt.trim().length > 0 && (
 				<figcaption
-					style={{ ...imagesBase.caption, ...palette.caption }}
+					style={{ ...imagesBase.caption, color: `var(--atproto-color-text-secondary)` }}
 				>
 					{image.alt}
 				</figcaption>
@@ -577,37 +491,6 @@ const imagesBase = {
 	} satisfies React.CSSProperties,
 };
 
-const imagesPalette = {
-	light: {
-		container: {
-			padding: 0,
-		} satisfies React.CSSProperties,
-		item: {},
-		media: {
-			background: "#e2e8f0",
-		} satisfies React.CSSProperties,
-		placeholder: {
-			color: "#475569",
-		} satisfies React.CSSProperties,
-		caption: {
-			color: "#475569",
-		} satisfies React.CSSProperties,
-	},
-	dark: {
-		container: {
-			padding: 0,
-		} satisfies React.CSSProperties,
-		item: {},
-		media: {
-			background: "#1e293b",
-		} satisfies React.CSSProperties,
-		placeholder: {
-			color: "#cbd5f5",
-		} satisfies React.CSSProperties,
-		caption: {
-			color: "#94a3b8",
-		} satisfies React.CSSProperties,
-	},
-} as const;
+// imagesPalette removed - now using CSS variables for theming
 
 export default BlueskyPostRenderer;

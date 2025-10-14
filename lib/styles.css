@@ -1,0 +1,85 @@
+/**
+ * Global CSS variables for AtProto UI components
+ *
+ * These variables can be customized in your application by setting them
+ * at the :root level or within specific components.
+ */
+
+:root {
+	/* Light theme colors (default) */
+	--atproto-color-bg: #ffffff;
+	--atproto-color-bg-elevated: #f8fafc;
+	--atproto-color-bg-secondary: #f1f5f9;
+	--atproto-color-text: #0f172a;
+	--atproto-color-text-secondary: #475569;
+	--atproto-color-text-muted: #64748b;
+	--atproto-color-border: #e2e8f0;
+	--atproto-color-border-subtle: #cbd5e1;
+	--atproto-color-link: #2563eb;
+	--atproto-color-link-hover: #1d4ed8;
+	--atproto-color-error: #dc2626;
+	--atproto-color-button-bg: #f1f5f9;
+	--atproto-color-button-hover: #e2e8f0;
+	--atproto-color-button-text: #0f172a;
+	--atproto-color-code-bg: #f1f5f9;
+	--atproto-color-code-border: #e2e8f0;
+	--atproto-color-blockquote-border: #cbd5e1;
+	--atproto-color-blockquote-bg: #f8fafc;
+	--atproto-color-hr: #e2e8f0;
+	--atproto-color-image-bg: #f1f5f9;
+	--atproto-color-highlight: #fef08a;
+}
+
+/* Dark theme - can be applied via [data-theme="dark"] or .dark class */
+[data-theme="dark"],
+.dark {
+	--atproto-color-bg: #0f172a;
+	--atproto-color-bg-elevated: #1e293b;
+	--atproto-color-bg-secondary: #0b1120;
+	--atproto-color-text: #e2e8f0;
+	--atproto-color-text-secondary: #94a3b8;
+	--atproto-color-text-muted: #64748b;
+	--atproto-color-border: #1e293b;
+	--atproto-color-border-subtle: #334155;
+	--atproto-color-link: #60a5fa;
+	--atproto-color-link-hover: #93c5fd;
+	--atproto-color-error: #ef4444;
+	--atproto-color-button-bg: #1e293b;
+	--atproto-color-button-hover: #334155;
+	--atproto-color-button-text: #e2e8f0;
+	--atproto-color-code-bg: #0b1120;
+	--atproto-color-code-border: #1e293b;
+	--atproto-color-blockquote-border: #334155;
+	--atproto-color-blockquote-bg: #1e293b;
+	--atproto-color-hr: #334155;
+	--atproto-color-image-bg: #1e293b;
+	--atproto-color-highlight: #854d0e;
+}
+
+/* Support for system preference based theming */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme]),
+	:root[data-theme="system"] {
+		--atproto-color-bg: #0f172a;
+		--atproto-color-bg-elevated: #1e293b;
+		--atproto-color-bg-secondary: #0b1120;
+		--atproto-color-text: #e2e8f0;
+		--atproto-color-text-secondary: #94a3b8;
+		--atproto-color-text-muted: #64748b;
+		--atproto-color-border: #1e293b;
+		--atproto-color-border-subtle: #334155;
+		--atproto-color-link: #60a5fa;
+		--atproto-color-link-hover: #93c5fd;
+		--atproto-color-error: #ef4444;
+		--atproto-color-button-bg: #1e293b;
+		--atproto-color-button-hover: #334155;
+		--atproto-color-button-text: #e2e8f0;
+		--atproto-color-code-bg: #0b1120;
+		--atproto-color-code-border: #1e293b;
+		--atproto-color-blockquote-border: #334155;
+		--atproto-color-blockquote-bg: #1e293b;
+		--atproto-color-hr: #334155;
+		--atproto-color-image-bg: #1e293b;
+		--atproto-color-highlight: #854d0e;
+	}
+}

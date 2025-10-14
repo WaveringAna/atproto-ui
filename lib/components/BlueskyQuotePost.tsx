@@ -20,10 +20,6 @@ export interface BlueskyQuotePostProps {
 	 */
 	rkey: string;
 	/**
-	 * Preferred color scheme propagated to nested renders.
-	 */
-	colorScheme?: "light" | "dark" | "system";
-	/**
 	 * Custom renderer override applied to the parent post.
 	 */
 	renderer?: React.ComponentType<BlueskyPostRendererInjectedProps>;
@@ -50,7 +46,6 @@ export interface BlueskyQuotePostProps {
  *
  * @param did - DID that owns the quoted parent post.
  * @param rkey - Record key identifying the parent post.
- * @param colorScheme - Preferred color scheme for both parent and quoted posts.
  * @param renderer - Optional renderer override applied to the parent post.
  * @param fallback - Node rendered before parent post data loads.
  * @param loadingIndicator - Node rendered while the parent post request is in-flight.
@@ -61,7 +56,6 @@ export interface BlueskyQuotePostProps {
 const BlueskyQuotePostComponent: React.FC<BlueskyQuotePostProps> = ({
 	did,
 	rkey,
-	colorScheme,
 	renderer,
 	fallback,
 	loadingIndicator,
@@ -73,13 +67,12 @@ const BlueskyQuotePostComponent: React.FC<BlueskyQuotePostProps> = ({
 		const QuoteRenderer: React.FC<BlueskyPostRendererInjectedProps> = (
 			props,
 		) => {
-			const resolvedColorScheme = props.colorScheme ?? colorScheme;
 			const embedSource = props.record.embed as
 				| QuoteRecordEmbed
 				| undefined;
 			const embedNode = useMemo(
-				() => createQuoteEmbed(embedSource, resolvedColorScheme),
-				[embedSource, resolvedColorScheme],
+				() => createQuoteEmbed(embedSource),
+				[embedSource],
 			);
 			return <BaseRenderer {...props} embed={embedNode} />;
 		};
@@ -87,13 +80,12 @@ const BlueskyQuotePostComponent: React.FC<BlueskyQuotePostProps> = ({
 		const MemoizedQuoteRenderer = memo(QuoteRenderer);
 		MemoizedQuoteRenderer.displayName = "BlueskyQuotePostRenderer";
 		return MemoizedQuoteRenderer;
-	}, [BaseRenderer, colorScheme]);
+	}, [BaseRenderer]);
 
 	return (
 		<BlueskyPost
 			did={did}
 			rkey={rkey}
-			colorScheme={colorScheme}
 			renderer={Renderer}
 			fallback={fallback}
 			loadingIndicator={loadingIndicator}
@@ -113,14 +105,12 @@ BlueskyQuotePost.displayName = "BlueskyQuotePost";
  * Builds the quoted post embed node when the parent record contains a record embed.
  *
  * @param embed - Embed payload containing a possible quote reference.
- * @param colorScheme - Desired visual theme for the nested quote.
  * @returns A nested `BlueskyPost` or `null` if no compatible embed exists.
  */
 type QuoteRecordEmbed = { $type?: string; record?: { uri?: string } };
 
 function createQuoteEmbed(
 	embed: QuoteRecordEmbed | undefined,
-	colorScheme?: "light" | "dark" | "system",
 ) {
 	if (!embed || embed.$type !== "app.bsky.embed.record") return null;
 	const quoted = embed.record;
@@ -132,7 +122,6 @@ function createQuoteEmbed(
 			<BlueskyPost
 				did={parsed.did}
 				rkey={parsed.rkey}
-				colorScheme={colorScheme}
 				showIcon={false}
 			/>
 		</div>

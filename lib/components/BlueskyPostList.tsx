@@ -4,7 +4,6 @@ import {
 	type AuthorFeedReason,
 	type ReplyParentInfo,
 } from "../hooks/usePaginatedRecords";
-import { useColorScheme } from "../hooks/useColorScheme";
 import type { FeedPostRecord } from "../types/bluesky";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { BlueskyIcon } from "./BlueskyIcon";
@@ -26,11 +25,6 @@ export interface BlueskyPostListProps {
 	 * Enables pagination controls when `true`. Defaults to `true`.
 	 */
 	enablePagination?: boolean;
-	/**
-	 * Preferred color scheme passed through to styling helpers.
-	 * Defaults to `'system'` which follows the OS preference.
-	 */
-	colorScheme?: "light" | "dark" | "system";
 }
 
 /**
@@ -39,17 +33,13 @@ export interface BlueskyPostListProps {
  * @param did - DID whose posts should be displayed.
  * @param limit - Maximum number of posts per page. Default `5`.
  * @param enablePagination - Whether pagination controls should render. Default `true`.
- * @param colorScheme - Preferred color scheme used for styling. Default `'system'`.
  * @returns A card-like list element with loading, empty, and error handling.
  */
-export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
+export const BlueskyPostList: React.FC<BlueskyPostListProps> = React.memo(({
 	did,
 	limit = 5,
 	enablePagination = true,
-	colorScheme = "system",
 }) => {
-	const scheme = useColorScheme(colorScheme);
-	const palette: ListPalette = scheme === "dark" ? darkPalette : lightPalette;
 	const { handle: resolvedHandle, did: resolvedDid } = useDidResolution(did);
 	const actorLabel = resolvedHandle ?? formatDid(did);
 	const actorPath = resolvedHandle ?? resolvedDid ?? did;
@@ -88,8 +78,8 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 		);
 
 	return (
-		<div style={{ ...listStyles.card, ...palette.card }}>
-			<div style={{ ...listStyles.header, ...palette.header }}>
+		<div style={{ ...listStyles.card, background: `var(--atproto-color-bg)`, borderWidth: "1px", borderStyle: "solid", borderColor: `var(--atproto-color-border)` }}>
+			<div style={{ ...listStyles.header, background: `var(--atproto-color-bg-elevated)`, color: `var(--atproto-color-text)` }}>
 				<div style={listStyles.headerInfo}>
 					<div style={listStyles.headerIcon}>
 						<BlueskyIcon size={20} />
@@ -99,7 +89,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 						<span
 							style={{
 								...listStyles.subtitle,
-								...palette.subtitle,
+								color: `var(--atproto-color-text-secondary)`,
 							}}
 						>
 							@{actorLabel}
@@ -108,7 +98,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 				</div>
 				{pageLabel && (
 					<span
-						style={{ ...listStyles.pageMeta, ...palette.pageMeta }}
+						style={{ ...listStyles.pageMeta, color: `var(--atproto-color-text-secondary)` }}
 					>
 						{pageLabel}
 					</span>
@@ -116,7 +106,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 			</div>
 			<div style={listStyles.items}>
 				{loading && records.length === 0 && (
-					<div style={{ ...listStyles.empty, ...palette.empty }}>
+					<div style={{ ...listStyles.empty, color: `var(--atproto-color-text-secondary)` }}>
 						Loading posts…
 					</div>
 				)}
@@ -128,23 +118,23 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 						did={actorPath}
 						reason={record.reason}
 						replyParent={record.replyParent}
-						palette={palette}
 						hasDivider={idx < records.length - 1}
 					/>
 				))}
 				{!loading && records.length === 0 && (
-					<div style={{ ...listStyles.empty, ...palette.empty }}>
+					<div style={{ ...listStyles.empty, color: `var(--atproto-color-text-secondary)` }}>
 						No posts found.
 					</div>
 				)}
 			</div>
 			{enablePagination && (
-				<div style={{ ...listStyles.footer, ...palette.footer }}>
+				<div style={{ ...listStyles.footer, borderTopColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
 					<button
 						type="button"
 						style={{
-							...listStyles.navButton,
-							...palette.navButton,
+							...listStyles.pageButton,
+							background: `var(--atproto-color-button-bg)`,
+							color: `var(--atproto-color-button-text)`,
 							cursor: hasPrev ? "pointer" : "not-allowed",
 							opacity: hasPrev ? 1 : 0.5,
 						}}
@@ -157,7 +147,11 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 						<span
 							style={{
 								...listStyles.pageChipActive,
-								...palette.pageChipActive,
+								color: `var(--atproto-color-button-text)`,
+								background: `var(--atproto-color-button-bg)`,
+								borderWidth: "1px",
+								borderStyle: "solid",
+								borderColor: `var(--atproto-color-button-bg)`,
 							}}
 						>
 							{pageIndex + 1}
@@ -166,7 +160,11 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 							<span
 								style={{
 									...listStyles.pageChip,
-									...palette.pageChip,
+									color: `var(--atproto-color-text-secondary)`,
+									borderWidth: "1px",
+									borderStyle: "solid",
+									borderColor: `var(--atproto-color-border)`,
+									background: `var(--atproto-color-bg)`,
 								}}
 							>
 								{pageIndex + 2}
@@ -176,8 +174,9 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 					<button
 						type="button"
 						style={{
-							...listStyles.navButton,
-							...palette.navButton,
+							...listStyles.pageButton,
+							background: `var(--atproto-color-button-bg)`,
+							color: `var(--atproto-color-button-text)`,
 							cursor: hasNext ? "pointer" : "not-allowed",
 							opacity: hasNext ? 1 : 0.5,
 						}}
@@ -190,14 +189,14 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = ({
 			)}
 			{loading && records.length > 0 && (
 				<div
-					style={{ ...listStyles.loadingBar, ...palette.loadingBar }}
+					style={{ ...listStyles.loadingBar, background: `var(--atproto-color-bg-elevated)`, color: `var(--atproto-color-text-secondary)` }}
 				>
 					Updating…
 				</div>
 			)}
 		</div>
 	);
-};
+});
 
 interface ListRowProps {
 	record: FeedPostRecord;
@@ -205,7 +204,6 @@ interface ListRowProps {
 	did: string;
 	reason?: AuthorFeedReason;
 	replyParent?: ReplyParentInfo;
-	palette: ListPalette;
 	hasDivider: boolean;
 }
 
@@ -215,7 +213,6 @@ const ListRow: React.FC<ListRowProps> = ({
 	did,
 	reason,
 	replyParent,
-	palette,
 	hasDivider,
 }) => {
 	const text = record.text?.trim() ?? "";
@@ -250,32 +247,32 @@ const ListRow: React.FC<ListRowProps> = ({
 			rel="noopener noreferrer"
 			style={{
 				...listStyles.row,
-				...palette.row,
+				color: `var(--atproto-color-text)`,
 				borderBottom: hasDivider
-					? `1px solid ${palette.divider}`
+					? `1px solid var(--atproto-color-border)`
 					: "none",
 			}}
 		>
 			{repostLabel && (
-				<span style={{ ...listStyles.rowMeta, ...palette.rowMeta }}>
+				<span style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
 					{repostLabel}
 				</span>
 			)}
 			{replyLabel && (
-				<span style={{ ...listStyles.rowMeta, ...palette.rowMeta }}>
+				<span style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
 					{replyLabel}
 				</span>
 			)}
 			{relative && (
 				<span
-					style={{ ...listStyles.rowTime, ...palette.rowTime }}
+					style={{ ...listStyles.rowTime, color: `var(--atproto-color-text-secondary)` }}
 					title={absolute}
 				>
 					{relative}
 				</span>
 			)}
 			{text && (
-				<p style={{ ...listStyles.rowBody, ...palette.rowBody }}>
+				<p style={{ ...listStyles.rowBody, color: `var(--atproto-color-text)` }}>
 					{text}
 				</p>
 			)}
@@ -283,7 +280,7 @@ const ListRow: React.FC<ListRowProps> = ({
 				<p
 					style={{
 						...listStyles.rowBody,
-						...palette.rowBody,
+						color: `var(--atproto-color-text)`,
 						fontStyle: "italic",
 					}}
 				>
@@ -323,28 +320,13 @@ function formatRelativeTime(iso: string): string {
 	return rtf.format(Math.round(value), threshold.unit);
 }
 
-interface ListPalette {
-	card: { background: string; borderColor: string };
-	header: { borderBottomColor: string; color: string };
-	pageMeta: { color: string };
-	subtitle: { color: string };
-	empty: { color: string };
-	row: { color: string };
-	rowTime: { color: string };
-	rowBody: { color: string };
-	rowMeta: { color: string };
-	divider: string;
-	footer: { borderTopColor: string; color: string };
-	navButton: { color: string; background: string };
-	pageChip: { color: string; borderColor: string; background: string };
-	pageChipActive: { color: string; background: string; borderColor: string };
-	loadingBar: { color: string };
-}
 
 const listStyles = {
 	card: {
 		borderRadius: 16,
-		border: "1px solid transparent",
+		borderWidth: "1px",
+		borderStyle: "solid",
+		borderColor: "transparent",
 		boxShadow: "0 8px 18px -12px rgba(15, 23, 42, 0.25)",
 		overflow: "hidden",
 		display: "flex",
@@ -456,14 +438,30 @@ const listStyles = {
 		padding: "4px 10px",
 		borderRadius: 999,
 		fontSize: 13,
-		border: "1px solid transparent",
+		borderWidth: "1px",
+		borderStyle: "solid",
+		borderColor: "transparent",
 	} satisfies React.CSSProperties,
 	pageChipActive: {
 		padding: "4px 10px",
 		borderRadius: 999,
 		fontSize: 13,
 		fontWeight: 600,
-		border: "1px solid transparent",
+		borderWidth: "1px",
+		borderStyle: "solid",
+		borderColor: "transparent",
+	} satisfies React.CSSProperties,
+	pageButton: {
+		border: "none",
+		borderRadius: 999,
+		padding: "6px 12px",
+		fontSize: 13,
+		fontWeight: 500,
+		background: "transparent",
+		display: "flex",
+		alignItems: "center",
+		gap: 4,
+		transition: "background-color 120ms ease",
 	} satisfies React.CSSProperties,
 	loadingBar: {
 		padding: "4px 18px 14px",
@@ -471,114 +469,6 @@ const listStyles = {
 		textAlign: "right",
 		color: "#64748b",
 	} satisfies React.CSSProperties,
-};
-
-const lightPalette: ListPalette = {
-	card: {
-		background: "#ffffff",
-		borderColor: "#e2e8f0",
-	},
-	header: {
-		borderBottomColor: "#e2e8f0",
-		color: "#0f172a",
-	},
-	pageMeta: {
-		color: "#64748b",
-	},
-	subtitle: {
-		color: "#475569",
-	},
-	empty: {
-		color: "#64748b",
-	},
-	row: {
-		color: "#0f172a",
-	},
-	rowTime: {
-		color: "#94a3b8",
-	},
-	rowBody: {
-		color: "#0f172a",
-	},
-	rowMeta: {
-		color: "#64748b",
-	},
-	divider: "#e2e8f0",
-	footer: {
-		borderTopColor: "#e2e8f0",
-		color: "#0f172a",
-	},
-	navButton: {
-		color: "#0f172a",
-		background: "#f1f5f9",
-	},
-	pageChip: {
-		color: "#475569",
-		borderColor: "#e2e8f0",
-		background: "#ffffff",
-	},
-	pageChipActive: {
-		color: "#ffffff",
-		background: "#0f172a",
-		borderColor: "#0f172a",
-	},
-	loadingBar: {
-		color: "#64748b",
-	},
-};
-
-const darkPalette: ListPalette = {
-	card: {
-		background: "#0f172a",
-		borderColor: "#1e293b",
-	},
-	header: {
-		borderBottomColor: "#1e293b",
-		color: "#e2e8f0",
-	},
-	pageMeta: {
-		color: "#94a3b8",
-	},
-	subtitle: {
-		color: "#94a3b8",
-	},
-	empty: {
-		color: "#94a3b8",
-	},
-	row: {
-		color: "#e2e8f0",
-	},
-	rowTime: {
-		color: "#94a3b8",
-	},
-	rowBody: {
-		color: "#e2e8f0",
-	},
-	rowMeta: {
-		color: "#94a3b8",
-	},
-	divider: "#1e293b",
-	footer: {
-		borderTopColor: "#1e293b",
-		color: "#e2e8f0",
-	},
-	navButton: {
-		color: "#e2e8f0",
-		background: "#111c31",
-	},
-	pageChip: {
-		color: "#cbd5f5",
-		borderColor: "#1e293b",
-		background: "#0f172a",
-	},
-	pageChipActive: {
-		color: "#0f172a",
-		background: "#38bdf8",
-		borderColor: "#38bdf8",
-	},
-	loadingBar: {
-		color: "#94a3b8",
-	},
 };
 
 export default BlueskyPostList;

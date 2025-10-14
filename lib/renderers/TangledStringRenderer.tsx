@@ -1,9 +1,5 @@
 import React from "react";
 import type { ShTangledString } from "@atcute/tangled";
-import {
-	useColorScheme,
-	type ColorSchemePreference,
-} from "../hooks/useColorScheme";
 
 export type TangledStringRecord = ShTangledString.Main;
 
@@ -11,7 +7,6 @@ export interface TangledStringRendererProps {
 	record: TangledStringRecord;
 	error?: Error;
 	loading: boolean;
-	colorScheme?: ColorSchemePreference;
 	did: string;
 	rkey: string;
 	canonicalUrl?: string;
@@ -21,12 +16,10 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 	record,
 	error,
 	loading,
-	colorScheme = "system",
 	did,
 	rkey,
 	canonicalUrl,
 }) => {
-	const scheme = useColorScheme(colorScheme);
 
 	if (error)
 		return (
@@ -36,7 +29,6 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 		);
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
 
-	const palette = scheme === "dark" ? theme.dark : theme.light;
 	const viewUrl =
 		canonicalUrl ??
 		`https://tangled.org/strings/${did}/${encodeURIComponent(rkey)}`;
@@ -45,14 +37,14 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 		timeStyle: "short",
 	});
 	return (
-		<div style={{ ...base.container, ...palette.container }}>
-			<div style={{ ...base.header, ...palette.header }}>
-				<strong style={{ ...base.filename, ...palette.filename }}>
+		<div style={{ ...base.container, background: `var(--atproto-color-bg-elevated)`, borderWidth: "1px", borderStyle: "solid", borderColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
+			<div style={{ ...base.header, background: `var(--atproto-color-bg-elevated)`, borderBottomWidth: "1px", borderBottomStyle: "solid", borderBottomColor: `var(--atproto-color-border)` }}>
+				<strong style={{ ...base.filename, color: `var(--atproto-color-text)` }}>
 					{record.filename}
 				</strong>
-				<div style={{ ...base.headerRight, ...palette.headerRight }}>
+				<div style={{ ...base.headerRight }}>
 					<time
-						style={{ ...base.timestamp, ...palette.timestamp }}
+						style={{ ...base.timestamp, color: `var(--atproto-color-text-secondary)` }}
 						dateTime={record.createdAt}
 					>
 						{timestamp}
@@ -61,18 +53,18 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 						href={viewUrl}
 						target="_blank"
 						rel="noopener noreferrer"
-						style={{ ...base.headerLink, ...palette.headerLink }}
+						style={{ ...base.headerLink, color: `var(--atproto-color-link)` }}
 					>
 						View on Tangled
 					</a>
 				</div>
 			</div>
 			{record.description && (
-				<div style={{ ...base.description, ...palette.description }}>
+				<div style={{ ...base.description, background: `var(--atproto-color-bg)`, borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: `var(--atproto-color-border)`, borderBottomWidth: "1px", borderBottomStyle: "solid", borderBottomColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
 					{record.description}
 				</div>
 			)}
-			<pre style={{ ...base.codeBlock, ...palette.codeBlock }}>
+			<pre style={{ ...base.codeBlock, background: `var(--atproto-color-bg)`, color: `var(--atproto-color-text)`, borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: `var(--atproto-color-border)` }}>
 				<code>{record.contents}</code>
 			</pre>
 		</div>
@@ -119,86 +111,21 @@ const base: Record<string, React.CSSProperties> = {
 	description: {
 		padding: "10px 16px",
 		fontSize: 13,
-		borderTop: "1px solid transparent",
+		borderTopWidth: "1px",
+		borderTopStyle: "solid",
+		borderTopColor: "transparent",
 	},
 	codeBlock: {
 		margin: 0,
 		padding: "16px",
 		fontSize: 13,
 		overflowX: "auto",
-		borderTop: "1px solid transparent",
+		borderTopWidth: "1px",
+		borderTopStyle: "solid",
+		borderTopColor: "transparent",
 		fontFamily:
 			'SFMono-Regular, ui-monospace, Menlo, Monaco, "Courier New", monospace',
 	},
 };
-
-const theme = {
-	light: {
-		container: {
-			border: "1px solid #d0d7de",
-			background: "#f6f8fa",
-			color: "#1f2328",
-			boxShadow: "0 1px 2px rgba(31,35,40,0.05)",
-		},
-		header: {
-			background: "#f6f8fa",
-			borderBottom: "1px solid #d0d7de",
-		},
-		headerRight: {},
-		filename: {
-			color: "#1f2328",
-		},
-		timestamp: {
-			color: "#57606a",
-		},
-		headerLink: {
-			color: "#2563eb",
-		},
-		description: {
-			background: "#ffffff",
-			borderBottom: "1px solid #d0d7de",
-			borderTopColor: "#d0d7de",
-			color: "#1f2328",
-		},
-		codeBlock: {
-			background: "#ffffff",
-			color: "#1f2328",
-			borderTopColor: "#d0d7de",
-		},
-	},
-	dark: {
-		container: {
-			border: "1px solid #30363d",
-			background: "#0d1117",
-			color: "#c9d1d9",
-			boxShadow: "0 0 0 1px rgba(1,4,9,0.3) inset",
-		},
-		header: {
-			background: "#161b22",
-			borderBottom: "1px solid #30363d",
-		},
-		headerRight: {},
-		filename: {
-			color: "#c9d1d9",
-		},
-		timestamp: {
-			color: "#8b949e",
-		},
-		headerLink: {
-			color: "#58a6ff",
-		},
-		description: {
-			background: "#161b22",
-			borderBottom: "1px solid #30363d",
-			borderTopColor: "#30363d",
-			color: "#c9d1d9",
-		},
-		codeBlock: {
-			background: "#0d1117",
-			color: "#c9d1d9",
-			borderTopColor: "#30363d",
-		},
-	},
-} satisfies Record<"light" | "dark", Record<string, React.CSSProperties>>;
 
 export default TangledStringRenderer;

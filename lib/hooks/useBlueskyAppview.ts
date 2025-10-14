@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
 import { createAtprotoClient, SLINGSHOT_BASE_URL } from "../utils/atproto-client";
@@ -176,6 +176,56 @@ const BLUESKY_COLLECTION_TO_ENDPOINT: Record<string, string> = {
  * @param options - Configuration object with did, collection, rkey, and optional overrides.
  * @returns {UseBlueskyAppviewResult<T>} Object containing the record, loading state, error, and source.
  */
+
+// Reducer action types for useBlueskyAppview
+type BlueskyAppviewAction<T> =
+	| { type: "SET_LOADING"; loading: boolean }
+	| { type: "SET_SUCCESS"; record: T; source: "appview" | "slingshot" | "pds" }
+	| { type: "SET_ERROR"; error: Error }
+	| { type: "RESET" };
+
+// Reducer function for atomic state updates
+function blueskyAppviewReducer<T>(
+	state: UseBlueskyAppviewResult<T>,
+	action: BlueskyAppviewAction<T>
+): UseBlueskyAppviewResult<T> {
+	switch (action.type) {
+		case "SET_LOADING":
+			return {
+				...state,
+				loading: action.loading,
+				error: undefined,
+			};
+		case "SET_SUCCESS":
+			return {
+				record: action.record,
+				loading: false,
+				error: undefined,
+				source: action.source,
+			};
+		case "SET_ERROR":
+			// Only update if error message changed (stabilize error reference)
+			if (state.error?.message === action.error.message) {
+				return state;
+			}
+			return {
+				...state,
+				loading: false,
+				error: action.error,
+				source: undefined,
+			};
+		case "RESET":
+			return {
+				record: undefined,
+				loading: false,
+				error: undefined,
+				source: undefined,
+			};
+		default:
+			return state;
+	}
+}
+
 export function useBlueskyAppview<T = unknown>({
 	did: handleOrDid,
 	collection,
@@ -194,58 +244,47 @@ export function useBlueskyAppview<T = unknown>({
 		loading: resolvingEndpoint,
 	} = usePdsEndpoint(did);
 
-	const [record, setRecord] = useState<T | undefined>();
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<Error | undefined>();
-	const [source, setSource] = useState<"appview" | "slingshot" | "pds" | undefined>();
+	const [state, dispatch] = useReducer(blueskyAppviewReducer<T>, {
+		record: undefined,
+		loading: false,
+		error: undefined,
+		source: undefined,
+	});
 
 	useEffect(() => {
 		let cancelled = false;
 
-		const assign = (next: Partial<UseBlueskyAppviewResult<T>>) => {
-			if (cancelled) return;
-			setRecord(next.record);
-			setLoading(next.loading ?? false);
-			setError(next.error);
-			setSource(next.source);
-		};
-
 		// Early returns for missing inputs or resolution errors
 		if (!handleOrDid || !collection || !rkey) {
-			assign({
-				loading: false,
-				record: undefined,
-				error: undefined,
-				source: undefined,
-			});
+			if (!cancelled) dispatch({ type: "RESET" });
 			return () => {
 				cancelled = true;
 			};
 		}
 
 		if (didError) {
-			assign({ loading: false, error: didError, source: undefined });
+			if (!cancelled) dispatch({ type: "SET_ERROR", error: didError });
 			return () => {
 				cancelled = true;
 			};
 		}
 
 		if (endpointError) {
-			assign({ loading: false, error: endpointError, source: undefined });
+			if (!cancelled) dispatch({ type: "SET_ERROR", error: endpointError });
 			return () => {
 				cancelled = true;
 			};
 		}
 
 		if (resolvingDid || resolvingEndpoint || !did || !pdsEndpoint) {
-			assign({ loading: true, error: undefined, source: undefined });
+			if (!cancelled) dispatch({ type: "SET_LOADING", loading: true });
 			return () => {
 				cancelled = true;
 			};
 		}
 
 		// Start fetching
-		assign({ loading: true, error: undefined, source: undefined });
+		dispatch({ type: "SET_LOADING", loading: true });
 
 		(async () => {
 			let lastError: Error | undefined;
@@ -260,9 +299,9 @@ export function useBlueskyAppview<T = unknown>({
 						appviewService ?? DEFAULT_APPVIEW_SERVICE,
 					);
 					if (!cancelled && result) {
-						assign({
+						dispatch({
+							type: "SET_SUCCESS",
 							record: result,
-							loading: false,
 							source: "appview",
 						});
 						return;
@@ -277,9 +316,9 @@ export function useBlueskyAppview<T = unknown>({
 			try {
 				const result = await fetchFromSlingshot<T>(did, collection, rkey);
 				if (!cancelled && result) {
-					assign({
+					dispatch({
+						type: "SET_SUCCESS",
 						record: result,
-						loading: false,
 						source: "slingshot",
 					});
 					return;
@@ -298,9 +337,9 @@ export function useBlueskyAppview<T = unknown>({
 					pdsEndpoint,
 				);
 				if (!cancelled && result) {
-					assign({
+					dispatch({
+						type: "SET_SUCCESS",
 						record: result,
-						loading: false,
 						source: "pds",
 					});
 					return;
@@ -311,12 +350,11 @@ export function useBlueskyAppview<T = unknown>({
 
 			// All tiers failed
 			if (!cancelled) {
-				assign({
-					loading: false,
+				dispatch({
+					type: "SET_ERROR",
 					error:
 						lastError ??
 						new Error("Failed to fetch record from all sources"),
-					source: undefined,
 				});
 			}
 		})();
@@ -338,12 +376,7 @@ export function useBlueskyAppview<T = unknown>({
 		endpointError,
 	]);
 
-	return {
-		record,
-		loading,
-		error,
-		source,
-	};
+	return state;
 }
 
 /**

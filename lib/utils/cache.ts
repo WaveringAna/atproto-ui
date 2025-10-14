@@ -7,6 +7,7 @@ interface DidCacheEntry {
 	doc?: DidDocument;
 	pdsEndpoint?: string;
 	timestamp: number;
+	snapshot?: DidCacheSnapshot; // Memoized snapshot to prevent rerenders
 }
 
 export interface DidCacheSnapshot {
@@ -20,8 +21,13 @@ const toSnapshot = (
 	entry: DidCacheEntry | undefined,
 ): DidCacheSnapshot | undefined => {
 	if (!entry) return undefined;
+	// Return memoized snapshot if it exists
+	if (entry.snapshot) return entry.snapshot;
+	// Create and cache new snapshot
 	const { did, handle, doc, pdsEndpoint } = entry;
-	return { did, handle, doc, pdsEndpoint };
+	const snapshot = { did, handle, doc, pdsEndpoint };
+	entry.snapshot = snapshot;
+	return snapshot;
 };
 
 const derivePdsEndpoint = (
@@ -78,12 +84,26 @@ export class DidCache {
 			derivePdsEndpoint(doc) ??
 			existing?.pdsEndpoint;
 
+		// Check if data has changed - if not, reuse existing snapshot
+		if (
+			existing &&
+			existing.did === did &&
+			existing.handle === handle &&
+			existing.doc === doc &&
+			existing.pdsEndpoint === pdsEndpoint
+		) {
+			// Data unchanged, return existing memoized snapshot
+			return toSnapshot(existing) as DidCacheSnapshot;
+		}
+
+		// Data changed, create new entry (snapshot will be created on first access)
 		const merged: DidCacheEntry = {
 			did,
 			handle,
 			doc,
 			pdsEndpoint,
 			timestamp: Date.now(),
+			snapshot: undefined, // Will be created lazily by toSnapshot
 		};
 
 		this.byDid.set(did, merged);

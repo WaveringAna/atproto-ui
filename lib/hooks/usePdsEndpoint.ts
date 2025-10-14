@@ -45,7 +45,11 @@ export function usePdsEndpoint(did: string | undefined) {
 			})
 			.catch((e) => {
 				if (cancelled) return;
-				setError(e as Error);
+				const newError = e as Error;
+				// Only update error if message changed (stabilize reference)
+				setError(prevError => 
+					prevError?.message === newError.message ? prevError : newError
+				);
 			})
 			.finally(() => {
 				if (!cancelled) setLoading(false);

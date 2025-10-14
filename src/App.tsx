@@ -1,11 +1,6 @@
-import React, {
-	useState,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-} from "react";
-import { AtProtoProvider } from "../lib/providers/AtProtoProvider";
+import React, { useState, useCallback, useRef } from "react";
+import { AtProtoProvider } from "../lib";
+import "./App.css";
 
 import { TangledString } from "../lib/components/TangledString";
 import { LeafletDocument } from "../lib/components/LeafletDocument";
@@ -18,14 +13,7 @@ import { BlueskyPostList } from "../lib/components/BlueskyPostList";
 import { BlueskyQuotePost } from "../lib/components/BlueskyQuotePost";
 import { useDidResolution } from "../lib/hooks/useDidResolution";
 import { useLatestRecord } from "../lib/hooks/useLatestRecord";
-import { ColorSchemeToggle } from "../lib/components/ColorSchemeToggle.tsx";
-import {
-	useColorScheme,
-	type ColorSchemePreference,
-} from "../lib/hooks/useColorScheme";
 import type { FeedPostRecord } from "../lib/types/bluesky";
-
-const COLOR_SCHEME_STORAGE_KEY = "atproto-ui-color-scheme";
 
 const basicUsageSnippet = `import { AtProtoProvider, BlueskyPost } from 'atproto-ui';
 
@@ -43,7 +31,7 @@ import type { FeedPostRecord } from 'atproto-ui';
 const LatestPostWithPrefetch: React.FC<{ did: string }> = ({ did }) => {
     // Fetch once with the hook
     const { record, rkey, loading } = useLatestRecord<FeedPostRecord>(
-        did, 
+        did,
         'app.bsky.feed.post'
     );
 
@@ -64,28 +52,49 @@ const codeBlockBase: React.CSSProperties = {
 	lineHeight: 1.6,
 };
 
+const ThemeSwitcher: React.FC = () => {
+	const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+
+	const toggle = () => {
+		const schemes: ("light" | "dark" | "system")[] = [
+			"light",
+			"dark",
+			"system",
+		];
+		const currentIndex = schemes.indexOf(theme);
+		const nextIndex = (currentIndex + 1) % schemes.length;
+		const nextTheme = schemes[nextIndex];
+		setTheme(nextTheme);
+
+		// Update the data-theme attribute on the document element
+		if (nextTheme === "system") {
+			document.documentElement.removeAttribute("data-theme");
+		} else {
+			document.documentElement.setAttribute("data-theme", nextTheme);
+		}
+	};
+
+	return (
+		<button
+			onClick={toggle}
+			style={{
+				padding: "8px 12px",
+				borderRadius: 8,
+				border: "1px solid var(--demo-border)",
+				background: "var(--demo-input-bg)",
+				color: "var(--demo-text)",
+				cursor: "pointer",
+			}}
+		>
+			Theme: {theme}
+		</button>
+	);
+};
+
 const FullDemo: React.FC = () => {
 	const handleInputRef = useRef<HTMLInputElement | null>(null);
 	const [submitted, setSubmitted] = useState<string | null>(null);
-	const [colorSchemePreference, setColorSchemePreference] =
-		useState<ColorSchemePreference>(() => {
-			if (typeof window === "undefined") return "system";
-			try {
-				const stored = window.localStorage.getItem(
-					COLOR_SCHEME_STORAGE_KEY,
-				);
-				if (
-					stored === "light" ||
-					stored === "dark" ||
-					stored === "system"
-				)
-					return stored;
-			} catch {
-				/* ignore */
-			}
-			return "system";
-		});
-	const scheme = useColorScheme(colorSchemePreference);
+
 	const { did, loading: resolvingDid } = useDidResolution(
 		submitted ?? undefined,
 	);
@@ -100,115 +109,59 @@ const FullDemo: React.FC = () => {
 		setSubmitted(nextValue);
 	}, []);
 
-	useEffect(() => {
-		if (typeof window === "undefined") return;
-		try {
-			window.localStorage.setItem(
-				COLOR_SCHEME_STORAGE_KEY,
-				colorSchemePreference,
-			);
-		} catch {
-			/* ignore */
-		}
-	}, [colorSchemePreference]);
-
-	useEffect(() => {
-		if (typeof document === "undefined") return;
-		const root = document.documentElement;
-		const body = document.body;
-		const prevScheme = root.dataset.colorScheme;
-		const prevBg = body.style.backgroundColor;
-		const prevColor = body.style.color;
-		root.dataset.colorScheme = scheme;
-		body.style.backgroundColor = scheme === "dark" ? "#020617" : "#f8fafc";
-		body.style.color = scheme === "dark" ? "#e2e8f0" : "#0f172a";
-		return () => {
-			root.dataset.colorScheme = prevScheme ?? "";
-			body.style.backgroundColor = prevBg;
-			body.style.color = prevColor;
-		};
-	}, [scheme]);
-
 	const showHandle =
 		submitted && !submitted.startsWith("did:") ? submitted : undefined;
 
-	const mutedTextColor = useMemo(
-		() => (scheme === "dark" ? "#94a3b8" : "#555"),
-		[scheme],
-	);
-	const panelStyle = useMemo<React.CSSProperties>(
-		() => ({
-			display: "flex",
-			flexDirection: "column",
-			gap: 8,
-			padding: 10,
-			borderRadius: 12,
-			borderColor: scheme === "dark" ? "#1e293b" : "#e2e8f0",
-		}),
-		[scheme],
-	);
-	const baseTextColor = useMemo(
-		() => (scheme === "dark" ? "#e2e8f0" : "#0f172a"),
-		[scheme],
-	);
-	const gistPanelStyle = useMemo<React.CSSProperties>(
-		() => ({
-			...panelStyle,
-			padding: 0,
-			border: "none",
-			background: "transparent",
-			backdropFilter: "none",
-			marginTop: 32,
-		}),
-		[panelStyle],
-	);
-	const leafletPanelStyle = useMemo<React.CSSProperties>(
-		() => ({
-			...panelStyle,
-			padding: 0,
-			border: "none",
-			background: "transparent",
-			backdropFilter: "none",
-			marginTop: 32,
-			alignItems: "center",
-		}),
-		[panelStyle],
-	);
-	const primaryGridStyle = useMemo<React.CSSProperties>(
-		() => ({
-			display: "grid",
-			gap: 32,
-			gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-		}),
-		[],
-	);
-	const columnStackStyle = useMemo<React.CSSProperties>(
-		() => ({
-			display: "flex",
-			flexDirection: "column",
-			gap: 32,
-		}),
-		[],
-	);
-	const codeBlockStyle = useMemo<React.CSSProperties>(
-		() => ({
-			...codeBlockBase,
-			background: scheme === "dark" ? "#0b1120" : "#f1f5f9",
-			border: `1px solid ${scheme === "dark" ? "#1e293b" : "#e2e8f0"}`,
-		}),
-		[scheme],
-	);
-	const codeTextStyle = useMemo<React.CSSProperties>(
-		() => ({
-			margin: 0,
-			display: "block",
-			fontFamily: codeBlockBase.fontFamily,
-			fontSize: 12,
-			lineHeight: 1.6,
-			whiteSpace: "pre",
-		}),
-		[],
-	);
+	const panelStyle: React.CSSProperties = {
+		display: "flex",
+		flexDirection: "column",
+		gap: 8,
+		padding: 10,
+		borderRadius: 12,
+		border: `1px solid var(--demo-border)`,
+	};
+
+	const gistPanelStyle: React.CSSProperties = {
+		...panelStyle,
+		padding: 0,
+		border: "none",
+		background: "transparent",
+		backdropFilter: "none",
+		marginTop: 32,
+	};
+	const leafletPanelStyle: React.CSSProperties = {
+		...panelStyle,
+		padding: 0,
+		border: "none",
+		background: "transparent",
+		backdropFilter: "none",
+		marginTop: 32,
+		alignItems: "center",
+	};
+	const primaryGridStyle: React.CSSProperties = {
+		display: "grid",
+		gap: 32,
+		gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+	};
+	const columnStackStyle: React.CSSProperties = {
+		display: "flex",
+		flexDirection: "column",
+		gap: 32,
+	};
+	const codeBlockStyle: React.CSSProperties = {
+		...codeBlockBase,
+		background: `var(--demo-code-bg)`,
+		border: `1px solid var(--demo-code-border)`,
+		color: `var(--demo-text)`,
+	};
+	const codeTextStyle: React.CSSProperties = {
+		margin: 0,
+		display: "block",
+		fontFamily: codeBlockBase.fontFamily,
+		fontSize: 12,
+		lineHeight: 1.6,
+		whiteSpace: "pre",
+	};
 	const basicCodeRef = useRef<HTMLElement | null>(null);
 	const customCodeRef = useRef<HTMLElement | null>(null);
 
@@ -230,7 +183,6 @@ const FullDemo: React.FC = () => {
 				display: "flex",
 				flexDirection: "column",
 				gap: 20,
-				color: baseTextColor,
 			}}
 		>
 			<div
@@ -258,11 +210,9 @@ const FullDemo: React.FC = () => {
 							flex: "1 1 260px",
 							padding: "6px 8px",
 							borderRadius: 8,
-							border: "1px solid",
-							borderColor:
-								scheme === "dark" ? "#1e293b" : "#cbd5f5",
-							background: scheme === "dark" ? "#0b1120" : "#fff",
-							color: scheme === "dark" ? "#e2e8f0" : "#0f172a",
+							border: `1px solid var(--demo-border)`,
+							background: `var(--demo-input-bg)`,
+							color: `var(--demo-text)`,
 						}}
 					/>
 					<button
@@ -271,28 +221,26 @@ const FullDemo: React.FC = () => {
 							padding: "6px 16px",
 							borderRadius: 8,
 							border: "none",
-							background: "#2563eb",
-							color: "#fff",
+							background: `var(--demo-button-bg)`,
+							color: `var(--demo-button-text)`,
 							cursor: "pointer",
 						}}
 					>
 						Load
 					</button>
 				</form>
-				<ColorSchemeToggle
-					value={colorSchemePreference}
-					onChange={setColorSchemePreference}
-					scheme={scheme}
-				/>
+				<ThemeSwitcher />
 			</div>
 			{!submitted && (
-				<p style={{ color: mutedTextColor }}>
+				<p style={{ color: `var(--demo-text-secondary)` }}>
 					Enter a handle to fetch your profile, latest Bluesky post, a
 					Tangled string, and a Leaflet document.
 				</p>
 			)}
 			{submitted && resolvingDid && (
-				<p style={{ color: mutedTextColor }}>Resolving DID…</p>
+				<p style={{ color: `var(--demo-text-secondary)` }}>
+					Resolving DID…
+				</p>
 			)}
 			{did && (
 				<>
@@ -300,18 +248,11 @@ const FullDemo: React.FC = () => {
 						<div style={columnStackStyle}>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>Profile</h3>
-								<BlueskyProfile
-									did={did}
-									handle={showHandle}
-									colorScheme={colorSchemePreference}
-								/>
+								<BlueskyProfile did={did} handle={showHandle} />
 							</section>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>Recent Posts</h3>
-								<BlueskyPostList
-									did={did}
-									colorScheme={colorSchemePreference}
-								/>
+								<BlueskyPostList did={did} />
 							</section>
 						</div>
 						<div style={columnStackStyle}>
@@ -319,8 +260,36 @@ const FullDemo: React.FC = () => {
 								<h3 style={sectionHeaderStyle}>
 									Latest Post (Prefetched Data)
 								</h3>
-								<p style={{ fontSize: 12, color: mutedTextColor, margin: "0 0 8px" }}>
-									Using <code style={{ background: scheme === "dark" ? "#1e293b" : "#e2e8f0", padding: "2px 4px", borderRadius: 3 }}>useLatestRecord</code> to fetch once, then passing <code style={{ background: scheme === "dark" ? "#1e293b" : "#e2e8f0", padding: "2px 4px", borderRadius: 3 }}>record</code> prop—no re-fetch!
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Using{" "}
+									<code
+										style={{
+											background: `var(--demo-code-bg)`,
+											padding: "2px 4px",
+											borderRadius: 3,
+											color: "var(--demo-text)",
+										}}
+									>
+										useLatestRecord
+									</code>{" "}
+									to fetch once, then passing{" "}
+									<code
+										style={{
+											background: `var(--demo-code-bg)`,
+											padding: "2px 4px",
+											borderRadius: 3,
+											color: "var(--demo-text)",
+										}}
+									>
+										record
+									</code>{" "}
+									prop—no re-fetch!
 								</p>
 								{loadingLatestPost && (
 									<div style={loadingBox}>
@@ -333,23 +302,17 @@ const FullDemo: React.FC = () => {
 									</div>
 								)}
 								{noPosts && (
-									<div
-										style={{
-											...infoBox,
-											color: mutedTextColor,
-										}}
-									>
-										No posts found.
-									</div>
+									<div style={infoBox}>No posts found.</div>
 								)}
-								{!loadingLatestPost && latestPostRkey && latestPostRecord && (
-									<BlueskyPost
-										did={did}
-										rkey={latestPostRkey}
-										record={latestPostRecord}
-										colorScheme={colorSchemePreference}
-									/>
-								)}
+								{!loadingLatestPost &&
+									latestPostRkey &&
+									latestPostRecord && (
+										<BlueskyPost
+											did={did}
+											rkey={latestPostRkey}
+											record={latestPostRecord}
+										/>
+									)}
 							</section>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>
@@ -358,8 +321,51 @@ const FullDemo: React.FC = () => {
 								<BlueskyQuotePost
 									did={quoteSampleDid}
 									rkey={quoteSampleRkey}
-									colorScheme={colorSchemePreference}
 								/>
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
+									Custom Themed Post
+								</h3>
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Wrapping a component in a div with custom
+									CSS variables to override the theme!
+								</p>
+								<div
+									style={
+										{
+											"--atproto-color-bg":
+												"var(--demo-secondary-bg)",
+											"--atproto-color-bg-elevated":
+												"var(--demo-input-bg)",
+											"--atproto-color-bg-secondary":
+												"var(--demo-code-bg)",
+											"--atproto-color-text":
+												"var(--demo-text)",
+											"--atproto-color-text-secondary":
+												"var(--demo-text-secondary)",
+											"--atproto-color-text-muted":
+												"var(--demo-text-secondary)",
+											"--atproto-color-border":
+												"var(--demo-border)",
+											"--atproto-color-border-subtle":
+												"var(--demo-border)",
+											"--atproto-color-link":
+												"var(--demo-button-bg)",
+										} as React.CSSProperties
+									}
+								>
+									<BlueskyPost
+										did="nekomimi.pet"
+										rkey="3m2dgvyws7k27"
+									/>
+								</div>
 							</section>
 						</div>
 					</div>
@@ -368,7 +374,6 @@ const FullDemo: React.FC = () => {
 						<TangledString
 							did="nekomimi.pet"
 							rkey="3m2p4gjptg522"
-							colorScheme={colorSchemePreference}
 						/>
 					</section>
 					<section style={leafletPanelStyle}>
@@ -383,7 +388,6 @@ const FullDemo: React.FC = () => {
 							<LeafletDocument
 								did={"did:plc:ttdrpj45ibqunmfhdsb4zdwq"}
 								rkey={"3m2seagm2222c"}
-								colorScheme={colorSchemePreference}
 							/>
 						</div>
 					</section>
@@ -391,7 +395,12 @@ const FullDemo: React.FC = () => {
 			)}
 			<section style={{ ...panelStyle, marginTop: 32 }}>
 				<h3 style={sectionHeaderStyle}>Code Examples</h3>
-				<p style={{ color: mutedTextColor, margin: "4px 0 8px" }}>
+				<p
+					style={{
+						color: `var(--demo-text-secondary)`,
+						margin: "4px 0 8px",
+					}}
+				>
 					Wrap your app with the provider once and drop the ready-made
 					components wherever you need them.
 				</p>
@@ -404,8 +413,14 @@ const FullDemo: React.FC = () => {
 						{basicUsageSnippet}
 					</code>
 				</pre>
-				<p style={{ color: mutedTextColor, margin: "16px 0 8px" }}>
-					Pass prefetched data to components to skip API calls—perfect for SSR or caching.
+				<p
+					style={{
+						color: `var(--demo-text-secondary)`,
+						margin: "16px 0 8px",
+					}}
+				>
+					Pass prefetched data to components to skip API calls—perfect
+					for SSR or caching.
 				</p>
 				<pre style={codeBlockStyle}>
 					<code
@@ -421,15 +436,17 @@ const FullDemo: React.FC = () => {
 	);
 };
 
-
-
 const sectionHeaderStyle: React.CSSProperties = {
 	margin: "4px 0",
 	fontSize: 16,
+	color: "var(--demo-text)",
 };
 const loadingBox: React.CSSProperties = { padding: 8 };
 const errorBox: React.CSSProperties = { padding: 8, color: "crimson" };
-const infoBox: React.CSSProperties = { padding: 8, color: "#555" };
+const infoBox: React.CSSProperties = {
+	padding: 8,
+	color: "var(--demo-text-secondary)",
+};
 
 export const App: React.FC = () => {
 	return (
@@ -440,14 +457,24 @@ export const App: React.FC = () => {
 					margin: "40px auto",
 					padding: "0 20px",
 					fontFamily: "system-ui, sans-serif",
+					minHeight: "100vh",
 				}}
 			>
-				<h1 style={{ marginTop: 0 }}>atproto-ui Demo</h1>
-				<p style={{ lineHeight: 1.4 }}>
+				<h1 style={{ marginTop: 0, color: "var(--demo-text)" }}>
+					atproto-ui Demo
+				</h1>
+				<p
+					style={{
+						lineHeight: 1.4,
+						color: "var(--demo-text-secondary)",
+					}}
+				>
 					A component library for rendering common AT Protocol records
 					for applications such as Bluesky and Tangled.
 				</p>
-				<hr style={{ margin: "32px 0" }} />
+				<hr
+					style={{ margin: "32px 0", borderColor: "var(--demo-hr)" }}
+				/>
 				<FullDemo />
 			</div>
 		</AtProtoProvider>
