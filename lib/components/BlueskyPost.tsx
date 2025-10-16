@@ -7,7 +7,7 @@ import { useAtProtoRecord } from "../hooks/useAtProtoRecord";
 import { useBlob } from "../hooks/useBlob";
 import { BLUESKY_PROFILE_COLLECTION } from "./BlueskyProfile";
 import { getAvatarCid } from "../utils/profile";
-import { formatDidForLabel } from "../utils/at-uri";
+import { formatDidForLabel, parseAtUri } from "../utils/at-uri";
 import { isBlobWithCdn } from "../utils/blob";
 
 /**
@@ -50,6 +50,16 @@ export interface BlueskyPostProps {
 	 * Defaults to `'timestamp'`.
 	 */
 	iconPlacement?: "cardBottomRight" | "timestamp" | "linkInline";
+	/**
+	 * Controls whether to show the parent post if this post is a reply.
+	 * Defaults to `false`.
+	 */
+	showParent?: boolean;
+	/**
+	 * Controls whether to recursively show all parent posts to the root.
+	 * Only applies when `showParent` is `true`. Defaults to `false`.
+	 */
+	recursiveParent?: boolean;
 }
 
 /**
@@ -97,10 +107,41 @@ export type BlueskyPostRendererInjectedProps = {
 	 * Optional override for the rendered embed contents.
 	 */
 	embed?: React.ReactNode;
+	/**
+	 * Whether this post is part of a thread.
+	 */
+	isInThread?: boolean;
+	/**
+	 * Depth of this post in a thread (0 = root, 1 = first reply, etc.).
+	 */
+	threadDepth?: number;
 };
 
-/** NSID for the canonical Bluesky feed post collection. */
 export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
+
+const threadContainerStyle: React.CSSProperties = {
+	display: "flex",
+	flexDirection: "column",
+	maxWidth: "600px",
+	width: "100%",
+	background: "var(--atproto-color-bg)",
+	position: "relative",
+};
+
+const parentPostStyle: React.CSSProperties = {
+	position: "relative",
+};
+
+const replyPostStyle: React.CSSProperties = {
+	position: "relative",
+};
+
+const loadingStyle: React.CSSProperties = {
+	padding: "24px 18px",
+	fontSize: "14px",
+	textAlign: "center",
+	color: "var(--atproto-color-text-secondary)",
+};
 
 /**
  * Fetches a Bluesky feed post, resolves metadata such as author handle and avatar,
@@ -108,6 +149,7 @@ export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
  *
  * @param did - DID of the repository that stores the post.
  * @param rkey - Record key for the post within the feed collection.
+ * @param record - Prefetched record for the post.
  * @param renderer - Optional renderer component to override the default.
  * @param fallback - Node rendered before the first fetch attempt resolves.
  * @param loadingIndicator - Node rendered while the post is loading.
@@ -115,111 +157,214 @@ export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
  * @param iconPlacement - Determines where the icon is positioned in the rendered post. Defaults to `'timestamp'`.
  * @returns A component that renders loading/fallback states and the resolved post.
  */
-export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(({
-	did: handleOrDid,
-	rkey,
-	record,
-	renderer,
-	fallback,
-	loadingIndicator,
-	showIcon = true,
-	iconPlacement = "timestamp",
-}) => {
-	const {
-		did: resolvedDid,
-		handle,
-		loading: resolvingIdentity,
-		error: resolutionError,
-	} = useDidResolution(handleOrDid);
-	const repoIdentifier = resolvedDid ?? handleOrDid;
-	const { record: profile } = useAtProtoRecord<ProfileRecord>({
-		did: repoIdentifier,
-		collection: BLUESKY_PROFILE_COLLECTION,
-		rkey: "self",
-	});
-	const avatar = profile?.avatar;
-	const avatarCdnUrl = isBlobWithCdn(avatar) ? avatar.cdnUrl : undefined;
-	const avatarCid = avatarCdnUrl ? undefined : getAvatarCid(profile);
+export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
+	({
+		did: handleOrDid,
+		rkey,
+		record,
+		renderer,
+		fallback,
+		loadingIndicator,
+		showIcon = true,
+		iconPlacement = "timestamp",
+		showParent = false,
+		recursiveParent = false,
+	}) => {
+		const {
+			did: resolvedDid,
+			handle,
+			loading: resolvingIdentity,
+			error: resolutionError,
+		} = useDidResolution(handleOrDid);
+		const repoIdentifier = resolvedDid ?? handleOrDid;
+		const { record: profile } = useAtProtoRecord<ProfileRecord>({
+			did: repoIdentifier,
+			collection: BLUESKY_PROFILE_COLLECTION,
+			rkey: "self",
+		});
+		const avatar = profile?.avatar;
+		const avatarCdnUrl = isBlobWithCdn(avatar) ? avatar.cdnUrl : undefined;
+		const avatarCid = avatarCdnUrl ? undefined : getAvatarCid(profile);
 
-	const Comp: React.ComponentType<BlueskyPostRendererInjectedProps> = useMemo(
-		() => renderer ?? ((props) => <BlueskyPostRenderer {...props} />),
-		[renderer]
-	);
+		const {
+			record: fetchedRecord,
+			loading: currentLoading,
+			error: currentError,
+		} = useAtProtoRecord<FeedPostRecord>({
+			did: showParent && !record ? repoIdentifier : "",
+			collection: showParent && !record ? BLUESKY_POST_COLLECTION : "",
+			rkey: showParent && !record ? rkey : "",
+		});
 
-	const displayHandle =
-		handle ?? (handleOrDid.startsWith("did:") ? undefined : handleOrDid);
-	const authorHandle =
-		displayHandle ?? formatDidForLabel(resolvedDid ?? handleOrDid);
-	const atUri = resolvedDid
-		? `at://${resolvedDid}/${BLUESKY_POST_COLLECTION}/${rkey}`
-		: undefined;
+		const currentRecord = record || fetchedRecord;
 
-	const Wrapped = useMemo(() => {
-		const WrappedComponent: React.FC<{
-			record: FeedPostRecord;
-			loading: boolean;
-			error?: Error;
-		}> = (props) => {
-			const { url: avatarUrlFromBlob } = useBlob(repoIdentifier, avatarCid);
-			const avatarUrl = avatarCdnUrl || avatarUrlFromBlob;
+		const parentUri = currentRecord?.reply?.parent?.uri;
+		const parsedParentUri = parentUri ? parseAtUri(parentUri) : null;
+		const parentDid = parsedParentUri?.did;
+		const parentRkey = parsedParentUri?.rkey;
+
+		const {
+			record: parentRecord,
+			loading: parentLoading,
+			error: parentError,
+		} = useAtProtoRecord<FeedPostRecord>({
+			did: showParent && parentDid ? parentDid : "",
+			collection: showParent && parentDid ? BLUESKY_POST_COLLECTION : "",
+			rkey: showParent && parentRkey ? parentRkey : "",
+		});
+
+		const Comp: React.ComponentType<BlueskyPostRendererInjectedProps> =
+			useMemo(
+				() =>
+					renderer ?? ((props) => <BlueskyPostRenderer {...props} />),
+				[renderer],
+			);
+
+		const displayHandle =
+			handle ??
+			(handleOrDid.startsWith("did:") ? undefined : handleOrDid);
+		const authorHandle =
+			displayHandle ?? formatDidForLabel(resolvedDid ?? handleOrDid);
+		const atUri = resolvedDid
+			? `at://${resolvedDid}/${BLUESKY_POST_COLLECTION}/${rkey}`
+			: undefined;
+
+		const Wrapped = useMemo(() => {
+			const WrappedComponent: React.FC<{
+				record: FeedPostRecord;
+				loading: boolean;
+				error?: Error;
+			}> = (props) => {
+				const { url: avatarUrlFromBlob } = useBlob(
+					repoIdentifier,
+					avatarCid,
+				);
+				const avatarUrl = avatarCdnUrl || avatarUrlFromBlob;
+				return (
+					<Comp
+						{...props}
+						authorHandle={authorHandle}
+						authorDid={repoIdentifier}
+						avatarUrl={avatarUrl}
+						iconPlacement={iconPlacement}
+						showIcon={showIcon}
+						atUri={atUri}
+						isInThread={true} // Always true for posts rendered in this component
+						threadDepth={showParent ? 1 : 0}
+					/>
+				);
+			};
+			WrappedComponent.displayName = "BlueskyPostWrappedRenderer";
+			return WrappedComponent;
+		}, [
+			Comp,
+			repoIdentifier,
+			avatarCid,
+			avatarCdnUrl,
+			authorHandle,
+			iconPlacement,
+			showIcon,
+			atUri,
+			showParent,
+		]);
+
+		if (!displayHandle && resolvingIdentity) {
+			return <div style={{ padding: 8 }}>Resolving handle…</div>;
+		}
+		if (!displayHandle && resolutionError) {
 			return (
-				<Comp
-					{...props}
-					authorHandle={authorHandle}
-					authorDid={repoIdentifier}
-					avatarUrl={avatarUrl}
-					iconPlacement={iconPlacement}
-					showIcon={showIcon}
-					atUri={atUri}
+				<div style={{ padding: 8, color: "crimson" }}>
+					Could not resolve handle.
+				</div>
+			);
+		}
+
+		const renderMainPost = (mainRecord?: FeedPostRecord) => {
+			if (mainRecord !== undefined) {
+				return (
+					<AtProtoRecord<FeedPostRecord>
+						record={mainRecord}
+						renderer={Wrapped}
+						fallback={fallback}
+						loadingIndicator={loadingIndicator}
+					/>
+				);
+			}
+
+			return (
+				<AtProtoRecord<FeedPostRecord>
+					did={repoIdentifier}
+					collection={BLUESKY_POST_COLLECTION}
+					rkey={rkey}
+					renderer={Wrapped}
+					fallback={fallback}
+					loadingIndicator={loadingIndicator}
 				/>
 			);
 		};
-		WrappedComponent.displayName = "BlueskyPostWrappedRenderer";
-		return WrappedComponent;
-	}, [
-		Comp,
-		repoIdentifier,
-		avatarCid,
-		avatarCdnUrl,
-		authorHandle,
-		iconPlacement,
-		showIcon,
-		atUri,
-	]);
 
-	if (!displayHandle && resolvingIdentity) {
-		return <div style={{ padding: 8 }}>Resolving handle…</div>;
-	}
-	if (!displayHandle && resolutionError) {
-		return (
-			<div style={{ padding: 8, color: "crimson" }}>
-				Could not resolve handle.
-			</div>
-		);
-	}
+		if (showParent) {
+			if (currentLoading || (parentLoading && !parentRecord)) {
+				return (
+					<div style={threadContainerStyle}>
+						<div style={loadingStyle}>Loading thread…</div>
+					</div>
+				);
+			}
 
+			if (currentError) {
+				return (
+					<div style={{ padding: 8, color: "crimson" }}>
+						Failed to load post.
+					</div>
+				);
+			}
 
-	if (record !== undefined) {
-		return (
-			<AtProtoRecord<FeedPostRecord>
-				record={record}
-				renderer={Wrapped}
-				fallback={fallback}
-				loadingIndicator={loadingIndicator}
-			/>
-		);
-	}
+			if (!parentDid || !parentRkey) {
+				return renderMainPost(record);
+			}
 
-	return (
-		<AtProtoRecord<FeedPostRecord>
-			did={repoIdentifier}
-			collection={BLUESKY_POST_COLLECTION}
-			rkey={rkey}
-			renderer={Wrapped}
-			fallback={fallback}
-			loadingIndicator={loadingIndicator}
-		/>
-	);
-});
+			if (parentError) {
+				return (
+					<div style={{ padding: 8, color: "crimson" }}>
+						Failed to load parent post.
+					</div>
+				);
+			}
+
+			return (
+				<div style={threadContainerStyle}>
+					<div style={parentPostStyle}>
+						{recursiveParent && parentRecord?.reply?.parent?.uri ? (
+							<BlueskyPost
+								did={parentDid}
+								rkey={parentRkey}
+								record={parentRecord}
+								showParent={true}
+								recursiveParent={true}
+								showIcon={false}
+								iconPlacement="cardBottomRight"
+							/>
+						) : (
+							<BlueskyPost
+								did={parentDid}
+								rkey={parentRkey}
+								record={parentRecord}
+								showIcon={false}
+								iconPlacement="cardBottomRight"
+							/>
+						)}
+					</div>
+
+					<div style={replyPostStyle}>
+						{renderMainPost(record || currentRecord)}
+					</div>
+				</div>
+			);
+		}
+
+		return renderMainPost(record);
+	},
+);
 
 export default BlueskyPost;

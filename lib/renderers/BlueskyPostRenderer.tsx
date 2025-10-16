@@ -15,7 +15,6 @@ export interface BlueskyPostRendererProps {
 	record: FeedPostRecord;
 	loading: boolean;
 	error?: Error;
-	// Optionally pass in actor display info if pre-fetched
 	authorHandle?: string;
 	authorDisplayName?: string;
 	avatarUrl?: string;
@@ -24,6 +23,9 @@ export interface BlueskyPostRendererProps {
 	iconPlacement?: "cardBottomRight" | "timestamp" | "linkInline";
 	showIcon?: boolean;
 	atUri?: string;
+	isInThread?: boolean;
+	threadDepth?: number;
+	isQuotePost?: boolean;
 }
 
 export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
@@ -38,18 +40,24 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 	iconPlacement = "timestamp",
 	showIcon = true,
 	atUri,
+	isInThread = false,
+	threadDepth = 0,
+	isQuotePost = false
 }) => {
+	void threadDepth;
+
 	const replyParentUri = record.reply?.parent?.uri;
 	const replyTarget = replyParentUri ? parseAtUri(replyParentUri) : undefined;
 	const { handle: parentHandle, loading: parentHandleLoading } =
 		useDidResolution(replyTarget?.did);
 
-	if (error)
+	if (error) {
 		return (
 			<div style={{ padding: 8, color: "crimson" }}>
 				Failed to load post.
 			</div>
 		);
+	}
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
 
 	const text = record.text;
@@ -72,131 +80,284 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 		typeof baseStyles.card.padding === "number"
 			? baseStyles.card.padding
 			: 12;
+
 	const cardStyle: React.CSSProperties = {
 		...baseStyles.card,
-		border: `1px solid var(--atproto-color-border)`,
+		border: (isInThread && !isQuotePost) ? "none" : `1px solid var(--atproto-color-border)`,
 		background: `var(--atproto-color-bg)`,
 		color: `var(--atproto-color-text)`,
-		...(iconPlacement === "cardBottomRight" && showIcon
+		borderRadius: (isInThread && !isQuotePost) ? "0" : "12px",
+		...(iconPlacement === "cardBottomRight" && showIcon && !isInThread
 			? { paddingBottom: cardPadding + 16 }
 			: {}),
 	};
 
 	return (
 		<article style={cardStyle} aria-busy={loading}>
-			<header style={baseStyles.header}>
-				{avatarUrl ? (
-					<img
-						src={avatarUrl}
-						alt="avatar"
-						style={baseStyles.avatarImg}
-					/>
-				) : (
-					<div
-						style={{
-							...baseStyles.avatarPlaceholder,
-							background: `var(--atproto-color-border-subtle)`,
-						}}
-						aria-hidden
-					/>
-				)}
-				<div style={{ display: "flex", flexDirection: "column" }}>
-					<strong style={{ fontSize: 14 }}>{primaryName}</strong>
-					{authorDisplayName && authorHandle && (
-						<span
-							style={{ ...baseStyles.handle, color: `var(--atproto-color-text-secondary)` }}
-						>
-							@{authorHandle}
-						</span>
-					)}
-				</div>
-				{iconPlacement === "timestamp" && showIcon && (
-					<div style={baseStyles.headerIcon}>{makeIcon()}</div>
-				)}
-			</header>
-			{replyHref && replyLabel && (
-				<div style={{ ...baseStyles.replyLine, color: `var(--atproto-color-text-secondary)` }}>
-					Replying to{" "}
-					<a
-						href={replyHref}
-						target="_blank"
-						rel="noopener noreferrer"
-						style={{
-							...baseStyles.replyLink,
-							color: `var(--atproto-color-link)`,
-						}}
-					>
-						{replyLabel}
-					</a>
-				</div>
-			)}
-			<div style={baseStyles.body}>
-				<p style={{ ...baseStyles.text, color: `var(--atproto-color-text)` }}>{text}</p>
-				{record.facets && record.facets.length > 0 && (
-					<div style={baseStyles.facets}>
-						{record.facets.map((_, idx) => (
-							<span
-								key={idx}
-								style={{
-									...baseStyles.facetTag,
-									background: `var(--atproto-color-bg-secondary)`,
-									color: `var(--atproto-color-text-secondary)`,
-								}}
-							>
-								facet
-							</span>
-						))}
-					</div>
-				)}
-				<div style={baseStyles.timestampRow}>
-					<time
-						style={{ ...baseStyles.time, color: `var(--atproto-color-text-muted)` }}
-						dateTime={record.createdAt}
-					>
-						{created}
-					</time>
-					{postUrl && (
-						<span style={baseStyles.linkWithIcon}>
-							<a
-								href={postUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								style={{
-									...baseStyles.postLink,
-									color: `var(--atproto-color-link)`,
-								}}
-							>
-								View on Bluesky
-							</a>
-							{iconPlacement === "linkInline" && showIcon && (
-								<span style={baseStyles.inlineIcon} aria-hidden>
-									{makeIcon()}
-								</span>
-							)}
-						</span>
-					)}
-				</div>
-				{resolvedEmbed && (
-					<div
-						style={{
-							...baseStyles.embedContainer,
-							border: `1px solid var(--atproto-color-border)`,
-							borderRadius: 12,
-							background: `var(--atproto-color-bg-elevated)`,
-						}}
-					>
-						{resolvedEmbed}
-					</div>
-				)}
-			</div>
-			{iconPlacement === "cardBottomRight" && showIcon && (
-				<div style={baseStyles.iconCorner} aria-hidden>
-					{makeIcon()}
-				</div>
+			{isInThread ? (
+				<ThreadLayout
+					avatarUrl={avatarUrl}
+					primaryName={primaryName}
+					authorDisplayName={authorDisplayName}
+					authorHandle={authorHandle}
+					iconPlacement={iconPlacement}
+					showIcon={showIcon}
+					makeIcon={makeIcon}
+					replyHref={replyHref}
+					replyLabel={replyLabel}
+					text={text}
+					record={record}
+					created={created}
+					postUrl={postUrl}
+					resolvedEmbed={resolvedEmbed}
+				/>
+			) : (
+				<DefaultLayout
+					avatarUrl={avatarUrl}
+					primaryName={primaryName}
+					authorDisplayName={authorDisplayName}
+					authorHandle={authorHandle}
+					iconPlacement={iconPlacement}
+					showIcon={showIcon}
+					makeIcon={makeIcon}
+					replyHref={replyHref}
+					replyLabel={replyLabel}
+					text={text}
+					record={record}
+					created={created}
+					postUrl={postUrl}
+					resolvedEmbed={resolvedEmbed}
+				/>
 			)}
 		</article>
 	);
 };
+
+interface LayoutProps {
+	avatarUrl?: string;
+	primaryName: string;
+	authorDisplayName?: string;
+	authorHandle?: string;
+	iconPlacement: "cardBottomRight" | "timestamp" | "linkInline";
+	showIcon: boolean;
+	makeIcon: () => React.ReactNode;
+	replyHref?: string;
+	replyLabel?: string;
+	text: string;
+	record: FeedPostRecord;
+	created: string;
+	postUrl?: string;
+	resolvedEmbed: React.ReactNode;
+}
+
+const AuthorInfo: React.FC<{
+	primaryName: string;
+	authorDisplayName?: string;
+	authorHandle?: string;
+	inline?: boolean;
+}> = ({ primaryName, authorDisplayName, authorHandle, inline = false }) => (
+	<div
+		style={{
+			display: "flex",
+			flexDirection: inline ? "row" : "column",
+			alignItems: inline ? "center" : "flex-start",
+			gap: inline ? 8 : 0,
+		}}
+	>
+		<strong style={{ fontSize: 14 }}>{primaryName}</strong>
+		{authorDisplayName && authorHandle && (
+			<span
+				style={{
+					...baseStyles.handle,
+					color: `var(--atproto-color-text-secondary)`,
+				}}
+			>
+				@{authorHandle}
+			</span>
+		)}
+	</div>
+);
+
+const Avatar: React.FC<{ avatarUrl?: string }> = ({ avatarUrl }) =>
+	avatarUrl ? (
+		<img src={avatarUrl} alt="avatar" style={baseStyles.avatarImg} />
+	) : (
+		<div style={baseStyles.avatarPlaceholder} aria-hidden />
+	);
+
+const ReplyInfo: React.FC<{
+	replyHref?: string;
+	replyLabel?: string;
+	marginBottom?: number;
+}> = ({ replyHref, replyLabel, marginBottom = 0 }) =>
+	replyHref && replyLabel ? (
+		<div
+			style={{
+				...baseStyles.replyLine,
+				color: `var(--atproto-color-text-secondary)`,
+				marginBottom,
+			}}
+		>
+			Replying to{" "}
+			<a
+				href={replyHref}
+				target="_blank"
+				rel="noopener noreferrer"
+				style={{
+					...baseStyles.replyLink,
+					color: `var(--atproto-color-link)`,
+				}}
+			>
+				{replyLabel}
+			</a>
+		</div>
+	) : null;
+
+const PostContent: React.FC<{
+	text: string;
+	record: FeedPostRecord;
+	created: string;
+	postUrl?: string;
+	iconPlacement: "cardBottomRight" | "timestamp" | "linkInline";
+	showIcon: boolean;
+	makeIcon: () => React.ReactNode;
+	resolvedEmbed: React.ReactNode;
+}> = ({
+	text,
+	record,
+	created,
+	postUrl,
+	iconPlacement,
+	showIcon,
+	makeIcon,
+	resolvedEmbed,
+}) => (
+	<div style={baseStyles.body}>
+		<p style={{ ...baseStyles.text, color: `var(--atproto-color-text)` }}>
+			{text}
+		</p>
+		{record.facets && record.facets.length > 0 && (
+			<div style={baseStyles.facets}>
+				{record.facets.map((_, idx) => (
+					<span
+						key={idx}
+						style={{
+							...baseStyles.facetTag,
+							background: `var(--atproto-color-bg-secondary)`,
+							color: `var(--atproto-color-text-secondary)`,
+						}}
+					>
+						facet
+					</span>
+				))}
+			</div>
+		)}
+		<div style={baseStyles.timestampRow}>
+			<time
+				style={{
+					...baseStyles.time,
+					color: `var(--atproto-color-text-muted)`,
+				}}
+				dateTime={record.createdAt}
+			>
+				{created}
+			</time>
+			{postUrl && (
+				<span style={baseStyles.linkWithIcon}>
+					<a
+						href={postUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{
+							...baseStyles.postLink,
+							color: `var(--atproto-color-link)`,
+						}}
+					>
+						View on Bluesky
+					</a>
+					{iconPlacement === "linkInline" && showIcon && (
+						<span style={baseStyles.inlineIcon} aria-hidden>
+							{makeIcon()}
+						</span>
+					)}
+				</span>
+			)}
+		</div>
+		{resolvedEmbed && (
+			<div style={baseStyles.embedContainer}>{resolvedEmbed}</div>
+		)}
+	</div>
+);
+
+const ThreadLayout: React.FC<LayoutProps> = (props) => (
+	<div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+		<Avatar avatarUrl={props.avatarUrl} />
+		<div style={{ flex: 1, minWidth: 0 }}>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					marginBottom: 4,
+				}}
+			>
+				<AuthorInfo
+					primaryName={props.primaryName}
+					authorDisplayName={props.authorDisplayName}
+					authorHandle={props.authorHandle}
+					inline
+				/>
+				{props.iconPlacement === "timestamp" && props.showIcon && (
+					<div style={{ marginLeft: "auto" }}>{props.makeIcon()}</div>
+				)}
+			</div>
+			<ReplyInfo
+				replyHref={props.replyHref}
+				replyLabel={props.replyLabel}
+				marginBottom={4}
+			/>
+			<PostContent {...props} />
+			{props.iconPlacement === "cardBottomRight" && props.showIcon && (
+				<div
+					style={{
+						position: "relative",
+						right: 0,
+						bottom: 0,
+						justifyContent: "flex-start",
+						marginTop: 8,
+						display: "flex",
+					}}
+					aria-hidden
+				>
+					{props.makeIcon()}
+				</div>
+			)}
+		</div>
+	</div>
+);
+
+const DefaultLayout: React.FC<LayoutProps> = (props) => (
+	<>
+		<header style={baseStyles.header}>
+			<Avatar avatarUrl={props.avatarUrl} />
+			<AuthorInfo
+				primaryName={props.primaryName}
+				authorDisplayName={props.authorDisplayName}
+				authorHandle={props.authorHandle}
+			/>
+			{props.iconPlacement === "timestamp" && props.showIcon && (
+				<div style={baseStyles.headerIcon}>{props.makeIcon()}</div>
+			)}
+		</header>
+		<ReplyInfo replyHref={props.replyHref} replyLabel={props.replyLabel} />
+		<PostContent {...props} />
+		{props.iconPlacement === "cardBottomRight" && props.showIcon && (
+			<div style={baseStyles.iconCorner} aria-hidden>
+				{props.makeIcon()}
+			</div>
+		)}
+	</>
+);
 
 const baseStyles: Record<string, React.CSSProperties> = {
 	card: {
@@ -237,11 +398,6 @@ const baseStyles: Record<string, React.CSSProperties> = {
 	},
 	time: {
 		fontSize: 11,
-	},
-	timestampIcon: {
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
 	},
 	body: {
 		fontSize: 14,
@@ -309,8 +465,6 @@ const baseStyles: Record<string, React.CSSProperties> = {
 	},
 };
 
-// Theme styles removed - now using CSS variables for theming
-
 function formatReplyLabel(
 	target: ParsedAtUri,
 	resolvedHandle?: string,
@@ -328,21 +482,13 @@ function createAutoEmbed(
 	const embed = record.embed as { $type?: string } | undefined;
 	if (!embed) return null;
 	if (embed.$type === "app.bsky.embed.images") {
-		return (
-			<ImagesEmbed
-				embed={embed as ImagesEmbedType}
-				did={authorDid}
-			/>
-		);
+		return <ImagesEmbed embed={embed as ImagesEmbedType} did={authorDid} />;
 	}
 	if (embed.$type === "app.bsky.embed.recordWithMedia") {
 		const media = (embed as RecordWithMediaEmbed).media;
 		if (media?.$type === "app.bsky.embed.images") {
 			return (
-				<ImagesEmbed
-					embed={media as ImagesEmbedType}
-					did={authorDid}
-				/>
+				<ImagesEmbed embed={media as ImagesEmbedType} did={authorDid} />
 			);
 		}
 	}
@@ -419,7 +565,12 @@ const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
 			: undefined;
 
 	return (
-		<figure style={{ ...imagesBase.item, background: `var(--atproto-color-bg-elevated)` }}>
+		<figure
+			style={{
+				...imagesBase.item,
+				background: `var(--atproto-color-bg-elevated)`,
+			}}
+		>
 			<div
 				style={{
 					...imagesBase.media,
@@ -446,7 +597,10 @@ const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
 			</div>
 			{image.alt && image.alt.trim().length > 0 && (
 				<figcaption
-					style={{ ...imagesBase.caption, color: `var(--atproto-color-text-secondary)` }}
+					style={{
+						...imagesBase.caption,
+						color: `var(--atproto-color-text-secondary)`,
+					}}
 				>
 					{image.alt}
 				</figcaption>
@@ -490,7 +644,5 @@ const imagesBase = {
 		lineHeight: 1.3,
 	} satisfies React.CSSProperties,
 };
-
-// imagesPalette removed - now using CSS variables for theming
 
 export default BlueskyPostRenderer;

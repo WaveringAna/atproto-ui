@@ -28,7 +28,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 		);
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
 
-	const profileUrl = `https://bsky.app/profile/${encodeURIComponent(did)}`;
+	const profileUrl = `https://bsky.app/profile/${did}`;
 	const rawWebsite = record.website?.trim();
 	const websiteHref = rawWebsite
 		? rawWebsite.match(/^https?:\/\//i)

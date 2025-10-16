@@ -74,7 +74,7 @@ const BlueskyQuotePostComponent: React.FC<BlueskyQuotePostProps> = ({
 				() => createQuoteEmbed(embedSource),
 				[embedSource],
 			);
-			return <BaseRenderer {...props} embed={embedNode} />;
+			return <BaseRenderer isQuotePost={true} {...props} embed={embedNode} />;
 		};
 		QuoteRenderer.displayName = "BlueskyQuotePostRenderer";
 		const MemoizedQuoteRenderer = memo(QuoteRenderer);

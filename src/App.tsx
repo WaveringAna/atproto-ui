@@ -325,6 +325,18 @@ const FullDemo: React.FC = () => {
 							</section>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>
+									Reply Post Demo
+								</h3>
+								<BlueskyPost
+									did="nekomimi.pet"
+									rkey="3m36jkng6nk22"
+									showParent={true}
+									recursiveParent={true}
+								/>
+							<section />
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
 									Custom Themed Post
 								</h3>
 								<p
