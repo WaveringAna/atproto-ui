@@ -60,7 +60,7 @@ document.documentElement.removeAttribute("data-theme");
 --atproto-color-text-secondary
 --atproto-color-border
 --atproto-color-link
-/* ...and more */
+/* ...and more, check out lib/styles.css */
 ```
 
 ### Override Component Theme
@@ -68,11 +68,13 @@ document.documentElement.removeAttribute("data-theme");
 Wrap any component in a div with custom CSS variables to override its appearance:
 
 ```tsx
+import { AtProtoStyles } from "atproto-ui";
+
 <div style={{
   '--atproto-color-bg': '#f0f0f0',
   '--atproto-color-text': '#000',
   '--atproto-color-link': '#0066cc',
-}}>
+} satisfies AtProtoStyles}>
   <BlueskyPost did="..." rkey="..." />
 </div>
 ```

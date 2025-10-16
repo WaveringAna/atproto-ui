@@ -196,7 +196,7 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 			rkey: showParent && !record ? rkey : "",
 		});
 
-		const currentRecord = record || fetchedRecord;
+		const currentRecord = record ?? fetchedRecord;
 
 		const parentUri = currentRecord?.reply?.parent?.uri;
 		const parsedParentUri = parentUri ? parseAtUri(parentUri) : null;

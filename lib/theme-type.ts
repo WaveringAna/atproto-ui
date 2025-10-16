@@ -1,0 +1,23 @@
+export type AtProtoStyles = React.CSSProperties & {
+  '--atproto-color-bg'?: string;
+  '--atproto-color-bg-elevated'?: string;
+  '--atproto-color-bg-secondary'?: string;
+  '--atproto-color-text'?: string;
+  '--atproto-color-text-secondary'?: string;
+  '--atproto-color-text-muted'?: string;
+  '--atproto-color-border'?: string;
+  '--atproto-color-border-subtle'?: string;
+  '--atproto-color-link'?: string;
+  '--atproto-color-link-hover'?: string;
+  '--atproto-color-error'?: string;
+  '--atproto-color-button-bg'?: string;
+  '--atproto-color-button-hover'?: string;
+  '--atproto-color-button-text'?: string;
+  '--atproto-color-code-bg'?: string;
+  '--atproto-color-code-border'?: string;
+  '--atproto-color-blockquote-border'?: string;
+  '--atproto-color-blockquote-bg'?: string;
+  '--atproto-color-hr'?: string;
+  '--atproto-color-image-bg'?: string;
+  '--atproto-color-highlight'?: string;
+};
