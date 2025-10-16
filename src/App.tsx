@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { AtProtoProvider } from "../lib";
+import "../lib/styles.css"
 import "./App.css";
 
 import { TangledString } from "../lib/components/TangledString";

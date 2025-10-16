@@ -25,6 +25,7 @@ npm install atproto-ui
 
 ```tsx
 import { AtProtoProvider, BlueskyPost, LeafletDocument } from "atproto-ui";
+import "atproto-ui/styles.css";
 
 export function App() {
 	return (

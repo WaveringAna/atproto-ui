@@ -1,6 +1,5 @@
 // Master exporter for the AT React component library.
 
-// Global styles - import this in your app root
 import "./styles.css";
 
 // Providers & core primitives
@@ -35,6 +34,7 @@ export * from "./renderers/TangledStringRenderer";
 // Types
 export * from "./types/bluesky";
 export * from "./types/leaflet";
+export * from "./types/theme";
 
 // Utilities
 export * from "./utils/at-uri";

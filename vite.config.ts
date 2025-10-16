@@ -18,10 +18,26 @@ function injectCssImport(): Plugin {
     };
 }
 
+const buildDemo = process.env.BUILD_TARGET === 'demo';
+
 // https://vite.dev/config/
 export default defineConfig({
-    plugins: [react(), dts({ tsconfigPath: './tsconfig.lib.json' }), injectCssImport()],
-    build: {
+    plugins: buildDemo
+        ? [react()]
+        : [react(), dts({ tsconfigPath: './tsconfig.lib.json' }), injectCssImport()],
+
+    // Demo app needs to resolve from src
+    root: buildDemo ? '.' : undefined,
+
+    build: buildDemo ? {
+        // Demo app build configuration
+        outDir: 'demo',
+        rollupOptions: {
+            input: resolve(__dirname, 'index.html')
+        },
+        sourcemap: true
+    } : {
+        // Library build configuration
         lib: {
             entry: resolve(__dirname, 'lib/index.ts'),
             name: 'atproto-ui',
