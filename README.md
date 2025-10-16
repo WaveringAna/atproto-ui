@@ -181,7 +181,7 @@ import type { FeedPostRecord } from "atproto-ui";
 
 ## Demo
 
-Check out the [live demo](https://atproto-ui.wisp.place/) to see all components in action.
+Check out the [live demo](https://atproto-ui.netlify.app/) to see all components in action.
 
 ### Running Locally
 
