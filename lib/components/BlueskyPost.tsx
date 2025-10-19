@@ -83,6 +83,10 @@ export type BlueskyPostRendererInjectedProps = {
 	 */
 	authorHandle: string;
 	/**
+	 * The author's display name from their profile.
+	 */
+	authorDisplayName?: string;
+	/**
 	 * The DID that owns the post record.
 	 */
 	authorDid: string;
@@ -191,6 +195,7 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 		const avatar = profile?.avatar;
 		const avatarCdnUrl = isBlobWithCdn(avatar) ? avatar.cdnUrl : undefined;
 		const avatarCid = avatarCdnUrl ? undefined : getAvatarCid(profile);
+		const authorDisplayName = profile?.displayName;
 
 		const {
 			record: fetchedRecord,
@@ -250,6 +255,7 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 					<Comp
 						{...props}
 						authorHandle={authorHandle}
+						authorDisplayName={authorDisplayName}
 						authorDid={repoIdentifier}
 						avatarUrl={avatarUrl}
 						iconPlacement={iconPlacement}
@@ -269,8 +275,50 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 			avatarCid,
 			avatarCdnUrl,
 			authorHandle,
+			authorDisplayName,
 			iconPlacement,
 			showIcon,
+			atUri,
+			showParent,
+		]);
+
+		const WrappedWithoutIcon = useMemo(() => {
+			const WrappedComponent: React.FC<{
+				record: FeedPostRecord;
+				loading: boolean;
+				error?: Error;
+			}> = (props) => {
+				const { url: avatarUrlFromBlob } = useBlob(
+					repoIdentifier,
+					avatarCid,
+				);
+				const avatarUrl = avatarCdnUrl || avatarUrlFromBlob;
+				return (
+					<Comp
+						{...props}
+						authorHandle={authorHandle}
+						authorDisplayName={authorDisplayName}
+						authorDid={repoIdentifier}
+						avatarUrl={avatarUrl}
+						iconPlacement={iconPlacement}
+						showIcon={false}
+						atUri={atUri}
+						isInThread
+						threadDepth={showParent ? 1 : 0}
+						showThreadBorder={!showParent && !!props.record?.reply?.parent}
+					/>
+				);
+			};
+			WrappedComponent.displayName = "BlueskyPostWrappedRendererWithoutIcon";
+			return WrappedComponent;
+		}, [
+			Comp,
+			repoIdentifier,
+			avatarCid,
+			avatarCdnUrl,
+			authorHandle,
+			authorDisplayName,
+			iconPlacement,
 			atUri,
 			showParent,
 		]);
@@ -304,6 +352,30 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 					collection={BLUESKY_POST_COLLECTION}
 					rkey={rkey}
 					renderer={Wrapped}
+					fallback={fallback}
+					loadingIndicator={loadingIndicator}
+				/>
+			);
+		};
+
+		const renderMainPostWithoutIcon = (mainRecord?: FeedPostRecord) => {
+			if (mainRecord !== undefined) {
+				return (
+					<AtProtoRecord<FeedPostRecord>
+						record={mainRecord}
+						renderer={WrappedWithoutIcon}
+						fallback={fallback}
+						loadingIndicator={loadingIndicator}
+					/>
+				);
+			}
+
+			return (
+				<AtProtoRecord<FeedPostRecord>
+					did={repoIdentifier}
+					collection={BLUESKY_POST_COLLECTION}
+					rkey={rkey}
+					renderer={WrappedWithoutIcon}
 					fallback={fallback}
 					loadingIndicator={loadingIndicator}
 				/>
@@ -349,22 +421,22 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 								record={parentRecord}
 								showParent={true}
 								recursiveParent={true}
-								showIcon={false}
-								iconPlacement="cardBottomRight"
+								showIcon={showIcon}
+								iconPlacement={iconPlacement}
 							/>
 						) : (
 							<BlueskyPost
 								did={parentDid}
 								rkey={parentRkey}
 								record={parentRecord}
-								showIcon={false}
-								iconPlacement="cardBottomRight"
+								showIcon={showIcon}
+								iconPlacement={iconPlacement}
 							/>
 						)}
 					</div>
 
 					<div style={replyPostStyle}>
-						{renderMainPost(record || currentRecord)}
+						{renderMainPostWithoutIcon(record || currentRecord)}
 					</div>
 				</div>
 			);

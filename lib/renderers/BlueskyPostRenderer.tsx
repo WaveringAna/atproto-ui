@@ -166,8 +166,8 @@ const AuthorInfo: React.FC<{
 			gap: inline ? 8 : 0,
 		}}
 	>
-		<strong style={{ fontSize: 14 }}>{primaryName}</strong>
-		{authorDisplayName && authorHandle && (
+		<strong style={{ fontSize: 14 }}>{authorDisplayName || primaryName}</strong>
+		{authorHandle && (
 			<span
 				style={{
 					...baseStyles.handle,
@@ -254,6 +254,9 @@ const PostContent: React.FC<{
 				))}
 			</div>
 		)}
+		{resolvedEmbed && (
+			<div style={baseStyles.embedContainer}>{resolvedEmbed}</div>
+		)}
 		<div style={baseStyles.timestampRow}>
 			<time
 				style={{
@@ -285,9 +288,6 @@ const PostContent: React.FC<{
 				</span>
 			)}
 		</div>
-		{resolvedEmbed && (
-			<div style={baseStyles.embedContainer}>{resolvedEmbed}</div>
-		)}
 	</div>
 );
 
@@ -419,6 +419,8 @@ const baseStyles: Record<string, React.CSSProperties> = {
 		marginTop: 12,
 		padding: 8,
 		borderRadius: 12,
+		border: `1px solid var(--atproto-color-border)`,
+		background: `var(--atproto-color-bg-elevated)`,
 		display: "flex",
 		flexDirection: "column",
 		gap: 8,

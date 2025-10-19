@@ -329,8 +329,8 @@ const FullDemo: React.FC = () => {
 									Reply Post Demo
 								</h3>
 								<BlueskyPost
-									did="nekomimi.pet"
-									rkey="3m36jkng6nk22"
+									did="did:plc:xwhsmuozq3mlsp56dyd7copv"
+									rkey="3m3je5ydg4s2o"
 									showParent={true}
 									recursiveParent={true}
 								/>
