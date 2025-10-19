@@ -26,6 +26,7 @@ export interface BlueskyPostRendererProps {
 	isInThread?: boolean;
 	threadDepth?: number;
 	isQuotePost?: boolean;
+	showThreadBorder?: boolean;
 }
 
 export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
@@ -42,7 +43,8 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 	atUri,
 	isInThread = false,
 	threadDepth = 0,
-	isQuotePost = false
+	isQuotePost = false,
+	showThreadBorder = false
 }) => {
 	void threadDepth;
 
@@ -83,10 +85,10 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 
 	const cardStyle: React.CSSProperties = {
 		...baseStyles.card,
-		border: (isInThread && !isQuotePost) ? "none" : `1px solid var(--atproto-color-border)`,
+		border: (isInThread && !isQuotePost && !showThreadBorder) ? "none" : `1px solid var(--atproto-color-border)`,
 		background: `var(--atproto-color-bg)`,
 		color: `var(--atproto-color-text)`,
-		borderRadius: (isInThread && !isQuotePost) ? "0" : "12px",
+		borderRadius: (isInThread && !isQuotePost && !showThreadBorder) ? "0" : "12px",
 		...(iconPlacement === "cardBottomRight" && showIcon && !isInThread
 			? { paddingBottom: cardPadding + 16 }
 			: {}),

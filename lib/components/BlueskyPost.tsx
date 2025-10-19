@@ -115,6 +115,10 @@ export type BlueskyPostRendererInjectedProps = {
 	 * Depth of this post in a thread (0 = root, 1 = first reply, etc.).
 	 */
 	threadDepth?: number;
+	/**
+	 * Whether to show border even when in thread context.
+	 */
+	showThreadBorder?: boolean;
 };
 
 export const BLUESKY_POST_COLLECTION = "app.bsky.feed.post";
@@ -126,6 +130,8 @@ const threadContainerStyle: React.CSSProperties = {
 	width: "100%",
 	background: "var(--atproto-color-bg)",
 	position: "relative",
+	borderRadius: "12px",
+	overflow: "hidden"
 };
 
 const parentPostStyle: React.CSSProperties = {
@@ -249,8 +255,9 @@ export const BlueskyPost: React.FC<BlueskyPostProps> = React.memo(
 						iconPlacement={iconPlacement}
 						showIcon={showIcon}
 						atUri={atUri}
-						isInThread={true} // Always true for posts rendered in this component
+						isInThread
 						threadDepth={showParent ? 1 : 0}
+						showThreadBorder={!showParent && !!props.record?.reply?.parent}
 					/>
 				);
 			};

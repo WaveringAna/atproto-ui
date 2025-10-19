@@ -28,6 +28,8 @@ interface AppviewProfileResponse {
 	avatar?: string;
 	banner?: string;
 	createdAt?: string;
+	pronouns?: string;
+	website?: string;
 	[key: string]: unknown;
 }
 
@@ -420,6 +422,15 @@ async function fetchFromAppview<T>(
 			description: profile.description,
 			createdAt: profile.createdAt,
 		};
+		
+		// Add pronouns and website if they exist
+		if (profile.pronouns) {
+			record.pronouns = profile.pronouns;
+		}
+		
+		if (profile.website) {
+			record.website = profile.website;
+		}
 		
 		if (profile.avatar && avatarCid) {
 			const avatarBlob: BlobWithCdn = {
