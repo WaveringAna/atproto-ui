@@ -10,6 +10,7 @@ import { useDidResolution } from "../hooks/useDidResolution";
 import { useBlob } from "../hooks/useBlob";
 import { BlueskyIcon } from "../components/BlueskyIcon";
 import { isBlobWithCdn, extractCidFromBlob } from "../utils/blob";
+import { RichText } from "../components/RichText";
 
 export interface BlueskyPostRendererProps {
 	record: FeedPostRecord;
@@ -236,24 +237,8 @@ const PostContent: React.FC<{
 }) => (
 	<div style={baseStyles.body}>
 		<p style={{ ...baseStyles.text, color: `var(--atproto-color-text)` }}>
-			{text}
+			<RichText text={text} facets={record.facets} />
 		</p>
-		{record.facets && record.facets.length > 0 && (
-			<div style={baseStyles.facets}>
-				{record.facets.map((_, idx) => (
-					<span
-						key={idx}
-						style={{
-							...baseStyles.facetTag,
-							background: `var(--atproto-color-bg-secondary)`,
-							color: `var(--atproto-color-text-secondary)`,
-						}}
-					>
-						facet
-					</span>
-				))}
-			</div>
-		)}
 		{resolvedEmbed && (
 			<div style={baseStyles.embedContainer}>{resolvedEmbed}</div>
 		)}
@@ -410,11 +395,6 @@ const baseStyles: Record<string, React.CSSProperties> = {
 		whiteSpace: "pre-wrap",
 		overflowWrap: "anywhere",
 	},
-	facets: {
-		marginTop: 8,
-		display: "flex",
-		gap: 4,
-	},
 	embedContainer: {
 		marginTop: 12,
 		padding: 8,
@@ -446,11 +426,6 @@ const baseStyles: Record<string, React.CSSProperties> = {
 	inlineIcon: {
 		display: "inline-flex",
 		alignItems: "center",
-	},
-	facetTag: {
-		padding: "2px 6px",
-		borderRadius: 4,
-		fontSize: 11,
 	},
 	replyLine: {
 		fontSize: 12,

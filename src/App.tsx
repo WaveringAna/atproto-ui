@@ -334,7 +334,25 @@ const FullDemo: React.FC = () => {
 									showParent={true}
 									recursiveParent={true}
 								/>
-							<section />
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
+									Rich Text Facets Demo
+								</h3>
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Post with mentions, links, and hashtags
+								</p>
+								<BlueskyPost
+									did="nekomimi.pet"
+									rkey="3m45s553cys22"
+									showParent={false}
+								/>
 							</section>
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>
