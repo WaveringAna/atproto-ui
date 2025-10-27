@@ -1,6 +1,6 @@
 {
 	"name": "atproto-ui",
-	"version": "0.6.0",
+	"version": "0.6.0-1",
 	"type": "module",
 	"description": "React components and hooks for rendering AT Protocol records.",
 	"main": "./lib-dist/index.js",
@@ -18,8 +18,7 @@
 		"README.md"
 	],
 	"sideEffects": [
-		"./lib-dist/styles.css",
-		"./lib-dist/index.js"
+		"./lib-dist/styles.css"
 	],
 	"scripts": {
 		"dev": "vite",

@@ -35,7 +35,7 @@ export default defineConfig({
         rollupOptions: {
             input: resolve(__dirname, 'index.html')
         },
-        sourcemap: true
+        sourcemap: false
     } : {
         // Library build configuration
         lib: {
@@ -71,7 +71,7 @@ export default defineConfig({
                 }
             }
         },
-        sourcemap: true,
+        sourcemap: false,
         minify: false
     }
 });
