@@ -111,6 +111,41 @@ All components support prefetched data:
 <LeafletDocument did={did} rkey={rkey} record={documentRecord} />
 ```
 
+### Using atcute Directly
+
+Use atcute directly to construct records and pass them to components—fully compatible!
+
+```tsx
+import { Client, simpleFetchHandler, ok } from '@atcute/client';
+import type { AppBskyFeedPost } from '@atcute/bluesky';
+import { BlueskyPost } from 'atproto-ui';
+
+// Create atcute client
+const client = new Client({
+    handler: simpleFetchHandler({ service: 'https://public.api.bsky.app' })
+});
+
+// Fetch a record
+const data = await ok(
+    client.get('com.atproto.repo.getRecord', {
+        params: {
+            repo: 'did:plc:ttdrpj45ibqunmfhdsb4zdwq',
+            collection: 'app.bsky.feed.post',
+            rkey: '3m45rq4sjes2h'
+        }
+    })
+);
+
+const record = data.value as AppBskyFeedPost.Main;
+
+// Pass atcute record directly to component!
+<BlueskyPost
+    did="did:plc:ttdrpj45ibqunmfhdsb4zdwq"
+    rkey="3m45rq4sjes2h"
+    record={record}
+/>
+```
+
 ## API Reference
 
 ### Components

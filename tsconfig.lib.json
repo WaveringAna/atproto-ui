@@ -18,7 +18,8 @@
     "declarationDir": "dist-lib",
     "sourceMap": true,
     "outDir": "./lib-dist",
-    "rootDir": "./lib"
+    "rootDir": "./lib",
+    "types": ["@atcute/bluesky"]
   },
   "include": ["lib/**/*.ts", "lib/**/*.tsx"]
 }

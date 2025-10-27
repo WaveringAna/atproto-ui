@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { AtProtoProvider } from "../lib";
-import "../lib/styles.css"
+import "../lib/styles.css";
 import "./App.css";
 
 import { TangledString } from "../lib/components/TangledString";
@@ -42,6 +42,35 @@ const LatestPostWithPrefetch: React.FC<{ did: string }> = ({ did }) => {
     // Pass prefetched record—BlueskyPost won't re-fetch it
     return <BlueskyPost did={did} rkey={rkey} record={record} />;
 };`;
+
+const atcuteUsageSnippet = `import { Client, simpleFetchHandler, ok } from '@atcute/client';
+import type { AppBskyFeedPost } from '@atcute/bluesky';
+import { BlueskyPost } from 'atproto-ui';
+
+// Create atcute client
+const client = new Client({
+    handler: simpleFetchHandler({ service: 'https://public.api.bsky.app' })
+});
+
+// Fetch a record
+const data = await ok(
+    client.get('com.atproto.repo.getRecord', {
+        params: {
+            repo: 'did:plc:ttdrpj45ibqunmfhdsb4zdwq',
+            collection: 'app.bsky.feed.post',
+            rkey: '3m45rq4sjes2h'
+        }
+    })
+);
+
+const record = data.value as AppBskyFeedPost.Main;
+
+// Pass atcute record directly to component!
+<BlueskyPost
+    did="did:plc:ttdrpj45ibqunmfhdsb4zdwq"
+    rkey="3m45rq4sjes2h"
+    record={record}
+/>`;
 
 const codeBlockBase: React.CSSProperties = {
 	fontFamily: 'Menlo, Consolas, "SFMono-Regular", ui-monospace, monospace',
@@ -460,6 +489,20 @@ const FullDemo: React.FC = () => {
 						style={codeTextStyle}
 					>
 						{prefetchedDataSnippet}
+					</code>
+				</pre>
+				<p
+					style={{
+						color: `var(--demo-text-secondary)`,
+						margin: "16px 0 8px",
+					}}
+				>
+					Use atcute directly to construct records and pass them to
+					components—fully compatible!
+				</p>
+				<pre style={codeBlockStyle}>
+					<code className="language-tsx" style={codeTextStyle}>
+						{atcuteUsageSnippet}
 					</code>
 				</pre>
 			</section>
