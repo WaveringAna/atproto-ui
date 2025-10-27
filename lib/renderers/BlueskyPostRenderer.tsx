@@ -531,12 +531,14 @@ interface PostImageProps {
 }
 
 const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
+	const [showAltText, setShowAltText] = React.useState(false);
 	const imageBlob = image.image;
 	const cdnUrl = isBlobWithCdn(imageBlob) ? imageBlob.cdnUrl : undefined;
 	const cid = cdnUrl ? undefined : extractCidFromBlob(imageBlob);
 	const { url: urlFromBlob, loading, error } = useBlob(did, cid);
 	const url = cdnUrl || urlFromBlob;
 	const alt = image.alt?.trim() || "Bluesky attachment";
+	const hasAlt = image.alt && image.alt.trim().length > 0;
 
 	const aspect =
 		image.aspectRatio && image.aspectRatio.height > 0
@@ -573,8 +575,26 @@ const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
 								: "Image unavailable"}
 					</div>
 				)}
+				{hasAlt && (
+					<button
+						onClick={() => setShowAltText(!showAltText)}
+						style={{
+							...imagesBase.altBadge,
+							background: showAltText
+								? `var(--atproto-color-text)`
+								: `var(--atproto-color-bg-secondary)`,
+							color: showAltText
+								? `var(--atproto-color-bg)`
+								: `var(--atproto-color-text)`,
+						}}
+						title="Toggle alt text"
+						aria-label="Toggle alt text"
+					>
+						ALT
+					</button>
+				)}
 			</div>
-			{image.alt && image.alt.trim().length > 0 && (
+			{hasAlt && showAltText && (
 				<figcaption
 					style={{
 						...imagesBase.caption,
@@ -621,6 +641,20 @@ const imagesBase = {
 	caption: {
 		fontSize: 12,
 		lineHeight: 1.3,
+	} satisfies React.CSSProperties,
+	altBadge: {
+		position: "absolute",
+		bottom: 8,
+		right: 8,
+		padding: "4px 8px",
+		fontSize: 10,
+		fontWeight: 600,
+		letterSpacing: "0.5px",
+		border: "none",
+		borderRadius: 4,
+		cursor: "pointer",
+		transition: "background 150ms ease, color 150ms ease",
+		fontFamily: "system-ui, sans-serif",
 	} satisfies React.CSSProperties,
 };
 
