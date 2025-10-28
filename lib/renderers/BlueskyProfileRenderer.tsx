@@ -71,24 +71,22 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 					{record.description}
 				</p>
 			)}
-			{websiteHref && websiteLabel && (
-				<div style={{ marginTop: 12 }}>
-					<a
-						href={websiteHref}
-						target="_blank"
-						rel="noopener noreferrer"
-						style={{ ...base.link, color: `var(--atproto-color-link)` }}
-					>
-						{websiteLabel}
-					</a>
-				</div>
-			)}
 			<div style={base.bottomRow}>
 				<div style={base.bottomLeft}>
 					{record.createdAt && (
 						<div style={{ ...base.meta, color: `var(--atproto-color-text-secondary)` }}>
 							Joined {new Date(record.createdAt).toLocaleDateString()}
 						</div>
+					)}
+					{websiteHref && websiteLabel && (
+						<a
+							href={websiteHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ ...base.link, color: `var(--atproto-color-link)` }}
+						>
+							{websiteLabel}
+						</a>
 					)}
 					<a
 						href={profileUrl}
@@ -109,6 +107,9 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 
 const base: Record<string, React.CSSProperties> = {
 	card: {
+		display: "flex",
+		flexDirection: "column",
+		height: "100%",
 		borderRadius: 12,
 		padding: 16,
 		fontFamily: "system-ui, sans-serif",
@@ -171,7 +172,8 @@ const base: Record<string, React.CSSProperties> = {
 		display: "flex",
 		alignItems: "flex-end",
 		justifyContent: "space-between",
-		marginTop: 12,
+		marginTop: "auto",
+		paddingTop: 12,
 	},
 	bottomLeft: {
 		display: "flex",
