@@ -270,3 +270,110 @@ export class BlobCache {
 		}
 	}
 }
+
+interface RecordCacheEntry<T = unknown> {
+	record: T;
+	timestamp: number;
+}
+
+interface InFlightRecordEntry<T = unknown> {
+	promise: Promise<T>;
+	abort: () => void;
+	refCount: number;
+}
+
+interface RecordEnsureResult<T = unknown> {
+	promise: Promise<T>;
+	release: () => void;
+}
+
+export class RecordCache {
+	private store = new Map<string, RecordCacheEntry>();
+	private inFlight = new Map<string, InFlightRecordEntry>();
+
+	private key(did: string, collection: string, rkey: string): string {
+		return `${did}::${collection}::${rkey}`;
+	}
+
+	get<T = unknown>(
+		did?: string,
+		collection?: string,
+		rkey?: string,
+	): T | undefined {
+		if (!did || !collection || !rkey) return undefined;
+		return this.store.get(this.key(did, collection, rkey))?.record as
+			| T
+			| undefined;
+	}
+
+	set<T = unknown>(
+		did: string,
+		collection: string,
+		rkey: string,
+		record: T,
+	): void {
+		this.store.set(this.key(did, collection, rkey), {
+			record,
+			timestamp: Date.now(),
+		});
+	}
+
+	ensure<T = unknown>(
+		did: string,
+		collection: string,
+		rkey: string,
+		loader: () => { promise: Promise<T>; abort: () => void },
+	): RecordEnsureResult<T> {
+		const cached = this.get<T>(did, collection, rkey);
+		if (cached !== undefined) {
+			return { promise: Promise.resolve(cached), release: () => {} };
+		}
+
+		const key = this.key(did, collection, rkey);
+		const existing = this.inFlight.get(key) as
+			| InFlightRecordEntry<T>
+			| undefined;
+		if (existing) {
+			existing.refCount += 1;
+			return {
+				promise: existing.promise,
+				release: () => this.release(key),
+			};
+		}
+
+		const { promise, abort } = loader();
+		const wrapped = promise.then((record) => {
+			this.set(did, collection, rkey, record);
+			return record;
+		});
+
+		const entry: InFlightRecordEntry<T> = {
+			promise: wrapped,
+			abort,
+			refCount: 1,
+		};
+
+		this.inFlight.set(key, entry as InFlightRecordEntry);
+
+		wrapped
+			.catch(() => {})
+			.finally(() => {
+				this.inFlight.delete(key);
+			});
+
+		return {
+			promise: wrapped,
+			release: () => this.release(key),
+		};
+	}
+
+	private release(key: string) {
+		const entry = this.inFlight.get(key);
+		if (!entry) return;
+		entry.refCount -= 1;
+		if (entry.refCount <= 0) {
+			this.inFlight.delete(key);
+			entry.abort();
+		}
+	}
+}

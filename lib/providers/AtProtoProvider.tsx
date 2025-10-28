@@ -6,7 +6,7 @@ import React, {
 	useRef,
 } from "react";
 import { ServiceResolver, normalizeBaseUrl } from "../utils/atproto-client";
-import { BlobCache, DidCache } from "../utils/cache";
+import { BlobCache, DidCache, RecordCache } from "../utils/cache";
 
 /**
  * Props for the AT Protocol context provider.
@@ -30,6 +30,8 @@ interface AtProtoContextValue {
 	didCache: DidCache;
 	/** Cache for fetched blob data. */
 	blobCache: BlobCache;
+	/** Cache for fetched AT Protocol records. */
+	recordCache: RecordCache;
 }
 
 const AtProtoContext = createContext<AtProtoContextValue | undefined>(
@@ -92,11 +94,13 @@ export function AtProtoProvider({
 	const cachesRef = useRef<{
 		didCache: DidCache;
 		blobCache: BlobCache;
+		recordCache: RecordCache;
 	} | null>(null);
 	if (!cachesRef.current) {
 		cachesRef.current = {
 			didCache: new DidCache(),
 			blobCache: new BlobCache(),
+			recordCache: new RecordCache(),
 		};
 	}
 
@@ -106,6 +110,7 @@ export function AtProtoProvider({
 			plcDirectory: normalizedPlc,
 			didCache: cachesRef.current!.didCache,
 			blobCache: cachesRef.current!.blobCache,
+			recordCache: cachesRef.current!.recordCache,
 		}),
 		[resolver, normalizedPlc],
 	);
@@ -120,8 +125,8 @@ export function AtProtoProvider({
 /**
  * Hook that accesses the AT Protocol context provided by `AtProtoProvider`.
  *
- * This hook exposes the service resolver, DID cache, and blob cache for building
- * custom AT Protocol functionality.
+ * This hook exposes the service resolver, DID cache, blob cache, and record cache
+ * for building custom AT Protocol functionality.
  *
  * @throws {Error} When called outside of an `AtProtoProvider`.
  * @returns {AtProtoContextValue} Object containing resolver, caches, and PLC directory URL.
@@ -131,7 +136,7 @@ export function AtProtoProvider({
  * import { useAtProto } from 'atproto-ui';
  *
  * function MyCustomComponent() {
- *   const { resolver, didCache, blobCache } = useAtProto();
+ *   const { resolver, didCache, blobCache, recordCache } = useAtProto();
  *   // Use the resolver and caches for custom AT Protocol operations
  * }
  * ```

@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
 import { createAtprotoClient, SLINGSHOT_BASE_URL } from "../utils/atproto-client";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Extended blob reference that includes CDN URL from appview responses.
@@ -235,6 +236,7 @@ export function useBlueskyAppview<T = unknown>({
 	appviewService,
 	skipAppview = false,
 }: UseBlueskyAppviewOptions): UseBlueskyAppviewResult<T> {
+	const { recordCache } = useAtProto();
 	const {
 		did,
 		error: didError,
@@ -253,6 +255,8 @@ export function useBlueskyAppview<T = unknown>({
 		source: undefined,
 	});
 
+	const releaseRef = useRef<(() => void) | undefined>(undefined);
+
 	useEffect(() => {
 		let cancelled = false;
 
@@ -261,6 +265,10 @@ export function useBlueskyAppview<T = unknown>({
 			if (!cancelled) dispatch({ type: "RESET" });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -268,6 +276,10 @@ export function useBlueskyAppview<T = unknown>({
 			if (!cancelled) dispatch({ type: "SET_ERROR", error: didError });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -275,6 +287,10 @@ export function useBlueskyAppview<T = unknown>({
 			if (!cancelled) dispatch({ type: "SET_ERROR", error: endpointError });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -282,87 +298,109 @@ export function useBlueskyAppview<T = unknown>({
 			if (!cancelled) dispatch({ type: "SET_LOADING", loading: true });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
 		// Start fetching
 		dispatch({ type: "SET_LOADING", loading: true });
 
-		(async () => {
-			let lastError: Error | undefined;
+		// Use recordCache.ensure for deduplication and caching
+		const { promise, release } = recordCache.ensure<T>(
+			did,
+			collection,
+			rkey,
+			() => {
+				const controller = new AbortController();
 
-			// Tier 1: Try Bluesky appview API
-			if (!skipAppview && BLUESKY_COLLECTION_TO_ENDPOINT[collection]) {
-				try {
-					const result = await fetchFromAppview<T>(
-						did,
-						collection,
-						rkey,
-						appviewService ?? DEFAULT_APPVIEW_SERVICE,
-					);
-					if (!cancelled && result) {
-						dispatch({
-							type: "SET_SUCCESS",
-							record: result,
-							source: "appview",
-						});
-						return;
+				const fetchPromise = (async () => {
+					let lastError: Error | undefined;
+
+					// Tier 1: Try Bluesky appview API
+					if (!skipAppview && BLUESKY_COLLECTION_TO_ENDPOINT[collection]) {
+						try {
+							const result = await fetchFromAppview<T>(
+								did,
+								collection,
+								rkey,
+								appviewService ?? DEFAULT_APPVIEW_SERVICE,
+							);
+							if (result) {
+								return result;
+							}
+						} catch (err) {
+							lastError = err as Error;
+							// Continue to next tier
+						}
 					}
-				} catch (err) {
-					lastError = err as Error;
-					// Continue to next tier
-				}
-			}
 
-			// Tier 2: Try Slingshot getRecord
-			try {
-				const result = await fetchFromSlingshot<T>(did, collection, rkey);
-				if (!cancelled && result) {
+					// Tier 2: Try Slingshot getRecord
+					try {
+						const result = await fetchFromSlingshot<T>(did, collection, rkey);
+						if (result) {
+							return result;
+						}
+					} catch (err) {
+						lastError = err as Error;
+						// Continue to next tier
+					}
+
+					// Tier 3: Try PDS directly
+					try {
+						const result = await fetchFromPds<T>(
+							did,
+							collection,
+							rkey,
+							pdsEndpoint,
+						);
+						if (result) {
+							return result;
+						}
+					} catch (err) {
+						lastError = err as Error;
+					}
+
+					// All tiers failed
+					throw lastError ?? new Error("Failed to fetch record from all sources");
+				})();
+
+				return {
+					promise: fetchPromise,
+					abort: () => controller.abort(),
+				};
+			}
+		);
+
+		releaseRef.current = release;
+
+		promise
+			.then((record) => {
+				if (!cancelled) {
 					dispatch({
 						type: "SET_SUCCESS",
-						record: result,
-						source: "slingshot",
+						record,
+						source: "appview",
 					});
-					return;
 				}
-			} catch (err) {
-				lastError = err as Error;
-				// Continue to next tier
-			}
-
-			// Tier 3: Try PDS directly
-			try {
-				const result = await fetchFromPds<T>(
-					did,
-					collection,
-					rkey,
-					pdsEndpoint,
-				);
-				if (!cancelled && result) {
+			})
+			.catch((err) => {
+				if (!cancelled) {
 					dispatch({
-						type: "SET_SUCCESS",
-						record: result,
-						source: "pds",
+						type: "SET_ERROR",
+						error: err instanceof Error ? err : new Error(String(err)),
 					});
-					return;
 				}
-			} catch (err) {
-				lastError = err as Error;
-			}
-
-			// All tiers failed
-			if (!cancelled) {
-				dispatch({
-					type: "SET_ERROR",
-					error:
-						lastError ??
-						new Error("Failed to fetch record from all sources"),
-				});
-			}
-		})();
+			});
 
 		return () => {
 			cancelled = true;
+			if (releaseRef.current) {
+				releaseRef.current();
+				releaseRef.current = undefined;
+			}
 		};
 	}, [
 		handleOrDid,
@@ -376,6 +414,7 @@ export function useBlueskyAppview<T = unknown>({
 		resolvingEndpoint,
 		didError,
 		endpointError,
+		recordCache,
 	]);
 
 	return state;

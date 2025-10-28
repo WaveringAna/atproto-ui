@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
 import { createAtprotoClient } from "../utils/atproto-client";
 import { useBlueskyAppview } from "./useBlueskyAppview";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Identifier trio required to address an AT Protocol record.
@@ -48,15 +49,16 @@ export function useAtProtoRecord<T = unknown>({
 	collection,
 	rkey,
 }: AtProtoRecordKey): AtProtoRecordState<T> {
+	const { recordCache } = useAtProto();
 	const isBlueskyCollection = collection?.startsWith("app.bsky.");
-	
+
 	// Always call all hooks (React rules) - conditionally use results
 	const blueskyResult = useBlueskyAppview<T>({
 		did: isBlueskyCollection ? handleOrDid : undefined,
 		collection: isBlueskyCollection ? collection : undefined,
 		rkey: isBlueskyCollection ? rkey : undefined,
 	});
-	
+
 	const {
 		did,
 		error: didError,
@@ -70,6 +72,8 @@ export function useAtProtoRecord<T = unknown>({
 	const [state, setState] = useState<AtProtoRecordState<T>>({
 		loading: !!(handleOrDid && collection && rkey),
 	});
+
+	const releaseRef = useRef<(() => void) | undefined>(undefined);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -87,6 +91,10 @@ export function useAtProtoRecord<T = unknown>({
 			});
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -94,6 +102,10 @@ export function useAtProtoRecord<T = unknown>({
 			assignState({ loading: false, error: didError });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -101,6 +113,10 @@ export function useAtProtoRecord<T = unknown>({
 			assignState({ loading: false, error: endpointError });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
@@ -108,43 +124,75 @@ export function useAtProtoRecord<T = unknown>({
 			assignState({ loading: true, error: undefined });
 			return () => {
 				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
 			};
 		}
 
 		assignState({ loading: true, error: undefined, record: undefined });
 
-		(async () => {
-			try {
-				const { rpc } = await createAtprotoClient({
-					service: endpoint,
-				});
-				const res = await (
-					rpc as unknown as {
-						get: (
-							nsid: string,
-							opts: {
-								params: {
-									repo: string;
-									collection: string;
-									rkey: string;
-								};
-							},
-						) => Promise<{ ok: boolean; data: { value: T } }>;
-					}
-				).get("com.atproto.repo.getRecord", {
-					params: { repo: did, collection, rkey },
-				});
-				if (!res.ok) throw new Error("Failed to load record");
-				const record = (res.data as { value: T }).value;
-				assignState({ record, loading: false });
-			} catch (e) {
-				const err = e instanceof Error ? e : new Error(String(e));
-				assignState({ error: err, loading: false });
+		// Use recordCache.ensure for deduplication and caching
+		const { promise, release } = recordCache.ensure<T>(
+			did,
+			collection,
+			rkey,
+			() => {
+				const controller = new AbortController();
+
+				const fetchPromise = (async () => {
+					const { rpc } = await createAtprotoClient({
+						service: endpoint,
+					});
+					const res = await (
+						rpc as unknown as {
+							get: (
+								nsid: string,
+								opts: {
+									params: {
+										repo: string;
+										collection: string;
+										rkey: string;
+									};
+								},
+							) => Promise<{ ok: boolean; data: { value: T } }>;
+						}
+					).get("com.atproto.repo.getRecord", {
+						params: { repo: did, collection, rkey },
+					});
+					if (!res.ok) throw new Error("Failed to load record");
+					return (res.data as { value: T }).value;
+				})();
+
+				return {
+					promise: fetchPromise,
+					abort: () => controller.abort(),
+				};
 			}
-		})();
+		);
+
+		releaseRef.current = release;
+
+		promise
+			.then((record) => {
+				if (!cancelled) {
+					assignState({ record, loading: false });
+				}
+			})
+			.catch((e) => {
+				if (!cancelled) {
+					const err = e instanceof Error ? e : new Error(String(e));
+					assignState({ error: err, loading: false });
+				}
+			});
 
 		return () => {
 			cancelled = true;
+			if (releaseRef.current) {
+				releaseRef.current();
+				releaseRef.current = undefined;
+			}
 		};
 	}, [
 		handleOrDid,
@@ -156,6 +204,7 @@ export function useAtProtoRecord<T = unknown>({
 		resolvingEndpoint,
 		didError,
 		endpointError,
+		recordCache,
 	]);
 
 	// Return Bluesky result for app.bsky.* collections
