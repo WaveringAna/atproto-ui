@@ -524,14 +524,7 @@ const infoBox: React.CSSProperties = {
 
 export const App: React.FC = () => {
 	return (
-		<AtProtoProvider
-    		plcDirectory="https://plc.wtf/"
-      		identityService="https://api.blacksky.community"
-        	slingshotBaseUrl="https://slingshot.microcosm.blue"
-        	blueskyAppviewService="https://api.blacksky.community"
-         	blueskyAppBaseUrl="https://reddwarf.app/"
-          	tangledBaseUrl="https://tangled.org"
-		>
+		<AtProtoProvider>
 			<div
 				style={{
 					maxWidth: 860,

@@ -71,13 +71,8 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 					{record.description}
 				</p>
 			)}
-			{record.createdAt && (
-				<div style={{ ...base.meta, color: `var(--atproto-color-text-secondary)` }}>
-					Joined {new Date(record.createdAt).toLocaleDateString()}
-				</div>
-			)}
-			<div style={base.links}>
-				{websiteHref && websiteLabel && (
+			{websiteHref && websiteLabel && (
+				<div style={{ marginTop: 12 }}>
 					<a
 						href={websiteHref}
 						target="_blank"
@@ -86,18 +81,27 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 					>
 						{websiteLabel}
 					</a>
-				)}
-				<a
-					href={profileUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					style={{ ...base.link, color: `var(--atproto-color-link)` }}
-				>
-					View on Bluesky
-				</a>
-			</div>
-			<div style={base.iconCorner} aria-hidden>
-				<BlueskyIcon size={18} />
+				</div>
+			)}
+			<div style={base.bottomRow}>
+				<div style={base.bottomLeft}>
+					{record.createdAt && (
+						<div style={{ ...base.meta, color: `var(--atproto-color-text-secondary)` }}>
+							Joined {new Date(record.createdAt).toLocaleDateString()}
+						</div>
+					)}
+					<a
+						href={profileUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{ ...base.link, color: `var(--atproto-color-link)` }}
+					>
+						View on Bluesky
+					</a>
+				</div>
+				<div aria-hidden>
+					<BlueskyIcon size={18} />
+				</div>
 			</div>
 		</div>
 	);
@@ -142,7 +146,7 @@ const base: Record<string, React.CSSProperties> = {
 		lineHeight: 1.4,
 	},
 	meta: {
-		marginTop: 12,
+		marginTop: 0,
 		fontSize: 12,
 	},
 	pronouns: {
@@ -155,12 +159,6 @@ const base: Record<string, React.CSSProperties> = {
 		padding: "2px 8px",
 		marginTop: 6,
 	},
-	links: {
-		display: "flex",
-		flexDirection: "column",
-		gap: 8,
-		marginTop: 12,
-	},
 	link: {
 		display: "inline-flex",
 		alignItems: "center",
@@ -169,10 +167,19 @@ const base: Record<string, React.CSSProperties> = {
 		fontWeight: 600,
 		textDecoration: "none",
 	},
+	bottomRow: {
+		display: "flex",
+		alignItems: "flex-end",
+		justifyContent: "space-between",
+		marginTop: 12,
+	},
+	bottomLeft: {
+		display: "flex",
+		flexDirection: "column",
+		gap: 8,
+	},
 	iconCorner: {
-		position: "absolute",
-		right: 12,
-		bottom: 12,
+		// Removed absolute positioning, now in flex layout
 	},
 };
 
