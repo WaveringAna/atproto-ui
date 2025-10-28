@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { useBlob } from "../hooks/useBlob";
+import { useAtProto } from "../providers/AtProtoProvider";
 import {
 	parseAtUri,
 	formatDidForLabel,
@@ -54,6 +55,7 @@ export const LeafletDocumentRenderer: React.FC<
 	publicationBaseUrl,
 	publicationRecord,
 }) => {
+	const { blueskyAppBaseUrl } = useAtProto();
 	const authorDid = record.author?.startsWith("did:")
 		? record.author
 		: undefined;
@@ -78,7 +80,7 @@ export const LeafletDocumentRenderer: React.FC<
 				: undefined);
 	const authorLabel = resolvedPublicationLabel ?? fallbackAuthorLabel;
 	const authorHref = publicationUri
-		? `https://bsky.app/profile/${publicationUri.did}`
+		? `${blueskyAppBaseUrl}/profile/${publicationUri.did}`
 		: undefined;
 
 	if (error)
@@ -105,7 +107,7 @@ export const LeafletDocumentRenderer: React.FC<
 				timeStyle: "short",
 			})
 		: undefined;
-	const fallbackLeafletUrl = `https://bsky.app/leaflet/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
+	const fallbackLeafletUrl = `${blueskyAppBaseUrl}/leaflet/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
 	const publicationRoot =
 		publicationBaseUrl ?? publicationRecord?.base_path ?? undefined;
 	const resolvedPublicationRoot = publicationRoot
@@ -117,7 +119,7 @@ export const LeafletDocumentRenderer: React.FC<
 		publicationLeafletUrl ??
 		postUrl ??
 		(publicationUri
-			? `https://bsky.app/profile/${publicationUri.did}`
+			? `${blueskyAppBaseUrl}/profile/${publicationUri.did}`
 			: undefined) ??
 		fallbackLeafletUrl;
 

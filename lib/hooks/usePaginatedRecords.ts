@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
-import { 
-	DEFAULT_APPVIEW_SERVICE, 
-	callAppviewRpc, 
-	callListRecords 
-} from "./useBlueskyAppview";
+import { callAppviewRpc, callListRecords } from "./useBlueskyAppview";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Record envelope returned by paginated AT Protocol queries.
@@ -118,6 +115,7 @@ export function usePaginatedRecords<T>({
 	authorFeedService,
 	authorFeedActor,
 }: UsePaginatedRecordsOptions): UsePaginatedRecordsResult<T> {
+	const { blueskyAppviewService } = useAtProto();
 	const {
 		did,
 		handle,
@@ -213,7 +211,7 @@ export function usePaginatedRecords<T>({
 						}
 						
 						const res = await callAppviewRpc<AuthorFeedResponse>(
-							authorFeedService ?? DEFAULT_APPVIEW_SERVICE,
+							authorFeedService ?? blueskyAppviewService,
 							"app.bsky.feed.getAuthorFeed",
 							{
 								actor: actorIdentifier,

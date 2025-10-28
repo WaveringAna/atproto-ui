@@ -13,17 +13,36 @@ import type {} from "@atcute/atproto";
 export interface ServiceResolverOptions {
 	plcDirectory?: string;
 	identityService?: string;
+	slingshotBaseUrl?: string;
 	fetch?: typeof fetch;
 }
 
 const DEFAULT_PLC = "https://plc.directory";
 const DEFAULT_IDENTITY_SERVICE = "https://public.api.bsky.app";
+const DEFAULT_SLINGSHOT = "https://slingshot.microcosm.blue";
+const DEFAULT_APPVIEW = "https://public.api.bsky.app";
+const DEFAULT_BLUESKY_APP = "https://bsky.app";
+const DEFAULT_TANGLED = "https://tangled.org";
+
 const ABSOLUTE_URL_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/;
 const SUPPORTED_DID_METHODS = ["plc", "web"] as const;
 type SupportedDidMethod = (typeof SUPPORTED_DID_METHODS)[number];
 type SupportedDid = Did<SupportedDidMethod>;
 
-export const SLINGSHOT_BASE_URL = "https://slingshot.microcosm.blue";
+/**
+ * Default configuration values for AT Protocol services.
+ * These can be overridden via AtProtoProvider props.
+ */
+export const DEFAULT_CONFIG = {
+	plcDirectory: DEFAULT_PLC,
+	identityService: DEFAULT_IDENTITY_SERVICE,
+	slingshotBaseUrl: DEFAULT_SLINGSHOT,
+	blueskyAppviewService: DEFAULT_APPVIEW,
+	blueskyAppBaseUrl: DEFAULT_BLUESKY_APP,
+	tangledBaseUrl: DEFAULT_TANGLED,
+} as const;
+
+export const SLINGSHOT_BASE_URL = DEFAULT_SLINGSHOT;
 
 export const normalizeBaseUrl = (input: string): string => {
 	const trimmed = input.trim();
@@ -38,6 +57,7 @@ export const normalizeBaseUrl = (input: string): string => {
 
 export class ServiceResolver {
 	private plc: string;
+	private slingshot: string;
 	private didResolver: CompositeDidDocumentResolver<SupportedDidMethod>;
 	private handleResolver: XrpcHandleResolver;
 	private fetchImpl: typeof fetch;
@@ -50,8 +70,13 @@ export class ServiceResolver {
 			opts.identityService && opts.identityService.trim()
 				? opts.identityService
 				: DEFAULT_IDENTITY_SERVICE;
+		const slingshotSource =
+			opts.slingshotBaseUrl && opts.slingshotBaseUrl.trim()
+				? opts.slingshotBaseUrl
+				: DEFAULT_SLINGSHOT;
 		this.plc = normalizeBaseUrl(plcSource);
 		const identityBase = normalizeBaseUrl(identitySource);
+		this.slingshot = normalizeBaseUrl(slingshotSource);
 		this.fetchImpl = bindFetch(opts.fetch);
 		const plcResolver = new PlcDidDocumentResolver({
 			apiUrl: this.plc,
@@ -97,6 +122,10 @@ export class ServiceResolver {
 		return svc.serviceEndpoint.replace(/\/$/, "");
 	}
 
+	getSlingshotUrl(): string {
+		return this.slingshot;
+	}
+
 	async resolveHandle(handle: string): Promise<string> {
 		const normalized = handle.trim().toLowerCase();
 		if (!normalized) throw new Error("Handle cannot be empty");
@@ -104,7 +133,7 @@ export class ServiceResolver {
 		try {
 			const url = new URL(
 				"/xrpc/com.atproto.identity.resolveHandle",
-				SLINGSHOT_BASE_URL,
+				this.slingshot,
 			);
 			url.searchParams.set("handle", normalized);
 			const response = await this.fetchImpl(url);
@@ -161,7 +190,8 @@ export async function createAtprotoClient(opts: CreateClientOptions = {}) {
 	}
 	if (!service) throw new Error("service or did required");
 	const normalizedService = normalizeBaseUrl(service);
-	const handler = createSlingshotAwareHandler(normalizedService, fetchImpl);
+	const slingshotUrl = resolver.getSlingshotUrl();
+	const handler = createSlingshotAwareHandler(normalizedService, slingshotUrl, fetchImpl);
 	const rpc = new Client({ handler });
 	return { rpc, service: normalizedService, resolver };
 }
@@ -177,11 +207,12 @@ const SLINGSHOT_RETRY_PATHS = [
 
 function createSlingshotAwareHandler(
 	service: string,
+	slingshotBaseUrl: string,
 	fetchImpl: typeof fetch,
 ): FetchHandler {
 	const primary = simpleFetchHandler({ service, fetch: fetchImpl });
 	const slingshot = simpleFetchHandler({
-		service: SLINGSHOT_BASE_URL,
+		service: slingshotBaseUrl,
 		fetch: fetchImpl,
 	});
 	return async (pathname, init) => {

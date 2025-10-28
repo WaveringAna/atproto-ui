@@ -2,6 +2,7 @@ import React from "react";
 import { AtProtoRecord } from "../core/AtProtoRecord";
 import { TangledStringRenderer } from "../renderers/TangledStringRenderer";
 import type { TangledStringRecord } from "../renderers/TangledStringRenderer";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Props for rendering Tangled String records.
@@ -66,6 +67,7 @@ export const TangledString: React.FC<TangledStringProps> = React.memo(({
 	loadingIndicator,
 	colorScheme,
 }) => {
+	const { tangledBaseUrl } = useAtProto();
 	const Comp: React.ComponentType<TangledStringRendererInjectedProps> =
 		renderer ?? ((props) => <TangledStringRenderer {...props} />);
 	const Wrapped: React.FC<{
@@ -78,7 +80,7 @@ export const TangledString: React.FC<TangledStringProps> = React.memo(({
 			colorScheme={colorScheme}
 			did={did}
 			rkey={rkey}
-			canonicalUrl={`https://tangled.org/strings/${did}/${encodeURIComponent(rkey)}`}
+			canonicalUrl={`${tangledBaseUrl}/strings/${did}/${encodeURIComponent(rkey)}`}
 		/>
 	);
 

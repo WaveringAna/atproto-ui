@@ -5,7 +5,7 @@ import React, {
 	useMemo,
 	useRef,
 } from "react";
-import { ServiceResolver, normalizeBaseUrl } from "../utils/atproto-client";
+import { ServiceResolver, normalizeBaseUrl, DEFAULT_CONFIG } from "../utils/atproto-client";
 import { BlobCache, DidCache, RecordCache } from "../utils/cache";
 
 /**
@@ -16,6 +16,16 @@ export interface AtProtoProviderProps {
 	children: React.ReactNode;
 	/** Optional custom PLC directory URL. Defaults to https://plc.directory */
 	plcDirectory?: string;
+	/** Optional custom identity service URL. Defaults to https://public.api.bsky.app */
+	identityService?: string;
+	/** Optional custom Slingshot service URL. Defaults to https://slingshot.microcosm.blue */
+	slingshotBaseUrl?: string;
+	/** Optional custom Bluesky appview service URL. Defaults to https://public.api.bsky.app */
+	blueskyAppviewService?: string;
+	/** Optional custom Bluesky app base URL for links. Defaults to https://bsky.app */
+	blueskyAppBaseUrl?: string;
+	/** Optional custom Tangled base URL for links. Defaults to https://tangled.org */
+	tangledBaseUrl?: string;
 }
 
 /**
@@ -26,6 +36,12 @@ interface AtProtoContextValue {
 	resolver: ServiceResolver;
 	/** Normalized PLC directory base URL. */
 	plcDirectory: string;
+	/** Normalized Bluesky appview service URL. */
+	blueskyAppviewService: string;
+	/** Normalized Bluesky app base URL for links. */
+	blueskyAppBaseUrl: string;
+	/** Normalized Tangled base URL for links. */
+	tangledBaseUrl: string;
 	/** Cache for DID documents and handle mappings. */
 	didCache: DidCache;
 	/** Cache for fetched blob data. */
@@ -77,19 +93,73 @@ const AtProtoContext = createContext<AtProtoContextValue | undefined>(
 export function AtProtoProvider({
 	children,
 	plcDirectory,
+	identityService,
+	slingshotBaseUrl,
+	blueskyAppviewService,
+	blueskyAppBaseUrl,
+	tangledBaseUrl,
 }: AtProtoProviderProps) {
 	const normalizedPlc = useMemo(
 		() =>
 			normalizeBaseUrl(
 				plcDirectory && plcDirectory.trim()
 					? plcDirectory
-					: "https://plc.directory",
+					: DEFAULT_CONFIG.plcDirectory,
 			),
 		[plcDirectory],
 	);
+	const normalizedIdentity = useMemo(
+		() =>
+			normalizeBaseUrl(
+				identityService && identityService.trim()
+					? identityService
+					: DEFAULT_CONFIG.identityService,
+			),
+		[identityService],
+	);
+	const normalizedSlingshot = useMemo(
+		() =>
+			normalizeBaseUrl(
+				slingshotBaseUrl && slingshotBaseUrl.trim()
+					? slingshotBaseUrl
+					: DEFAULT_CONFIG.slingshotBaseUrl,
+			),
+		[slingshotBaseUrl],
+	);
+	const normalizedAppview = useMemo(
+		() =>
+			normalizeBaseUrl(
+				blueskyAppviewService && blueskyAppviewService.trim()
+					? blueskyAppviewService
+					: DEFAULT_CONFIG.blueskyAppviewService,
+			),
+		[blueskyAppviewService],
+	);
+	const normalizedBlueskyApp = useMemo(
+		() =>
+			normalizeBaseUrl(
+				blueskyAppBaseUrl && blueskyAppBaseUrl.trim()
+					? blueskyAppBaseUrl
+					: DEFAULT_CONFIG.blueskyAppBaseUrl,
+			),
+		[blueskyAppBaseUrl],
+	);
+	const normalizedTangled = useMemo(
+		() =>
+			normalizeBaseUrl(
+				tangledBaseUrl && tangledBaseUrl.trim()
+					? tangledBaseUrl
+					: DEFAULT_CONFIG.tangledBaseUrl,
+			),
+		[tangledBaseUrl],
+	);
 	const resolver = useMemo(
-		() => new ServiceResolver({ plcDirectory: normalizedPlc }),
-		[normalizedPlc],
+		() => new ServiceResolver({
+			plcDirectory: normalizedPlc,
+			identityService: normalizedIdentity,
+			slingshotBaseUrl: normalizedSlingshot,
+		}),
+		[normalizedPlc, normalizedIdentity, normalizedSlingshot],
 	);
 	const cachesRef = useRef<{
 		didCache: DidCache;
@@ -108,11 +178,14 @@ export function AtProtoProvider({
 		() => ({
 			resolver,
 			plcDirectory: normalizedPlc,
+			blueskyAppviewService: normalizedAppview,
+			blueskyAppBaseUrl: normalizedBlueskyApp,
+			tangledBaseUrl: normalizedTangled,
 			didCache: cachesRef.current!.didCache,
 			blobCache: cachesRef.current!.blobCache,
 			recordCache: cachesRef.current!.recordCache,
 		}),
-		[resolver, normalizedPlc],
+		[resolver, normalizedPlc, normalizedAppview, normalizedBlueskyApp, normalizedTangled],
 	);
 
 	return (

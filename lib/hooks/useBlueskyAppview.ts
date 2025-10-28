@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef } from "react";
 import { useDidResolution } from "./useDidResolution";
 import { usePdsEndpoint } from "./usePdsEndpoint";
-import { createAtprotoClient, SLINGSHOT_BASE_URL } from "../utils/atproto-client";
+import { createAtprotoClient } from "../utils/atproto-client";
 import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
@@ -91,8 +91,6 @@ export interface UseBlueskyAppviewResult<T = unknown> {
 	/** Source from which the record was successfully fetched. */
 	source?: "appview" | "slingshot" | "pds";
 }
-
-export const DEFAULT_APPVIEW_SERVICE = "https://public.api.bsky.app";
 
 /**
  * Maps Bluesky collection NSIDs to their corresponding appview API endpoints.
@@ -236,7 +234,8 @@ export function useBlueskyAppview<T = unknown>({
 	appviewService,
 	skipAppview = false,
 }: UseBlueskyAppviewOptions): UseBlueskyAppviewResult<T> {
-	const { recordCache } = useAtProto();
+	const { recordCache, blueskyAppviewService, resolver } = useAtProto();
+	const effectiveAppviewService = appviewService ?? blueskyAppviewService;
 	const {
 		did,
 		error: didError,
@@ -326,7 +325,7 @@ export function useBlueskyAppview<T = unknown>({
 								did,
 								collection,
 								rkey,
-								appviewService ?? DEFAULT_APPVIEW_SERVICE,
+								effectiveAppviewService,
 							);
 							if (result) {
 								return result;
@@ -339,7 +338,8 @@ export function useBlueskyAppview<T = unknown>({
 
 					// Tier 2: Try Slingshot getRecord
 					try {
-						const result = await fetchFromSlingshot<T>(did, collection, rkey);
+						const slingshotUrl = resolver.getSlingshotUrl();
+						const result = await fetchFromSlingshot<T>(did, collection, rkey, slingshotUrl);
 						if (result) {
 							return result;
 						}
@@ -408,13 +408,14 @@ export function useBlueskyAppview<T = unknown>({
 		collection,
 		rkey,
 		pdsEndpoint,
-		appviewService,
+		effectiveAppviewService,
 		skipAppview,
 		resolvingDid,
 		resolvingEndpoint,
 		didError,
 		endpointError,
 		recordCache,
+		resolver,
 	]);
 
 	return state;
@@ -575,8 +576,9 @@ async function fetchFromSlingshot<T>(
 	did: string,
 	collection: string,
 	rkey: string,
+	slingshotBaseUrl: string,
 ): Promise<T | undefined> {
-	const res = await callGetRecord<T>(SLINGSHOT_BASE_URL, did, collection, rkey);
+	const res = await callGetRecord<T>(slingshotBaseUrl, did, collection, rkey);
 	if (!res.ok) throw new Error(`Slingshot getRecord failed for ${did}/${collection}/${rkey}`);
 	return res.data.value;
 }

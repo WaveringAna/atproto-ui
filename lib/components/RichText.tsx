@@ -1,6 +1,7 @@
 import React from "react";
 import type { AppBskyRichtextFacet } from "@atcute/bluesky";
 import { createTextSegments, type TextSegment } from "../utils/richtext";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 export interface RichTextProps {
 	text: string;
@@ -13,12 +14,13 @@ export interface RichTextProps {
  * Properly handles byte offsets and multi-byte characters.
  */
 export const RichText: React.FC<RichTextProps> = ({ text, facets, style }) => {
+	const { blueskyAppBaseUrl } = useAtProto();
 	const segments = createTextSegments(text, facets);
 
 	return (
 		<span style={style}>
 			{segments.map((segment, idx) => (
-				<RichTextSegment key={idx} segment={segment} />
+				<RichTextSegment key={idx} segment={segment} blueskyAppBaseUrl={blueskyAppBaseUrl} />
 			))}
 		</span>
 	);
@@ -26,9 +28,10 @@ export const RichText: React.FC<RichTextProps> = ({ text, facets, style }) => {
 
 interface RichTextSegmentProps {
 	segment: TextSegment;
+	blueskyAppBaseUrl: string;
 }
 
-const RichTextSegment: React.FC<RichTextSegmentProps> = ({ segment }) => {
+const RichTextSegment: React.FC<RichTextSegmentProps> = ({ segment, blueskyAppBaseUrl }) => {
 	if (!segment.facet) {
 		return <>{segment.text}</>;
 	}
@@ -68,7 +71,7 @@ const RichTextSegment: React.FC<RichTextSegmentProps> = ({ segment }) => {
 
 		case "app.bsky.richtext.facet#mention": {
 			const mentionFeature = feature as AppBskyRichtextFacet.Mention;
-			const profileUrl = `https://bsky.app/profile/${mentionFeature.did}`;
+			const profileUrl = `${blueskyAppBaseUrl}/profile/${mentionFeature.did}`;
 			return (
 				<a
 					href={profileUrl}
@@ -92,7 +95,7 @@ const RichTextSegment: React.FC<RichTextSegmentProps> = ({ segment }) => {
 
 		case "app.bsky.richtext.facet#tag": {
 			const tagFeature = feature as AppBskyRichtextFacet.Tag;
-			const tagUrl = `https://bsky.app/hashtag/${encodeURIComponent(tagFeature.tag)}`;
+			const tagUrl = `${blueskyAppBaseUrl}/hashtag/${encodeURIComponent(tagFeature.tag)}`;
 			return (
 				<a
 					href={tagUrl}

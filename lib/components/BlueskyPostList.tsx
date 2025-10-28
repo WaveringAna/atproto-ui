@@ -8,6 +8,7 @@ import type { FeedPostRecord } from "../types/bluesky";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { BlueskyIcon } from "./BlueskyIcon";
 import { parseAtUri } from "../utils/at-uri";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 /**
  * Options for rendering a paginated list of Bluesky posts.
@@ -215,6 +216,7 @@ const ListRow: React.FC<ListRowProps> = ({
 	replyParent,
 	hasDivider,
 }) => {
+	const { blueskyAppBaseUrl } = useAtProto();
 	const text = record.text?.trim() ?? "";
 	const relative = record.createdAt
 		? formatRelativeTime(record.createdAt)
@@ -222,7 +224,7 @@ const ListRow: React.FC<ListRowProps> = ({
 	const absolute = record.createdAt
 		? new Date(record.createdAt).toLocaleString()
 		: undefined;
-	const href = `https://bsky.app/profile/${did}/post/${rkey}`;
+	const href = `${blueskyAppBaseUrl}/profile/${did}/post/${rkey}`;
 	const repostLabel =
 		reason?.$type === "app.bsky.feed.defs#reasonRepost"
 			? `${formatActor(reason.by) ?? "Someone"} reposted`

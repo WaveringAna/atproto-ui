@@ -1,6 +1,8 @@
 # atproto-ui
 
-A React component library for rendering AT Protocol records (Bluesky, Leaflet, Tangled, and more). Handles DID resolution, PDS discovery, and record fetching automatically. [Live demo](https://atproto-ui.wisp.place).
+A React component library for rendering AT Protocol records (Bluesky, Leaflet, Tangled, and more). Handles DID resolution, PDS discovery, and record fetching automatically. [Live demo](https://atproto-ui.netlify.app).
+
+This project is mostly a wrapper on the extremely amazing work [Mary](https://mary.my.id/) has done with [atcute](https://tangled.org/@mary.my.id/atcute), please support it. I have to give thanks to [phil](https://bsky.app/profile/bad-example.com) for microcosm and slingshot. Incredible services being given for free that is responsible for why the components fetch data so quickly.
 
 ## Screenshots
 

@@ -1,5 +1,6 @@
 import React from "react";
 import type { ShTangledString } from "@atcute/tangled";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 export type TangledStringRecord = ShTangledString.Main;
 
@@ -20,6 +21,7 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 	rkey,
 	canonicalUrl,
 }) => {
+	const { tangledBaseUrl } = useAtProto();
 
 	if (error)
 		return (
@@ -31,7 +33,7 @@ export const TangledStringRenderer: React.FC<TangledStringRendererProps> = ({
 
 	const viewUrl =
 		canonicalUrl ??
-		`https://tangled.org/strings/${did}/${encodeURIComponent(rkey)}`;
+		`${tangledBaseUrl}/strings/${did}/${encodeURIComponent(rkey)}`;
 	const timestamp = new Date(record.createdAt).toLocaleString(undefined, {
 		dateStyle: "medium",
 		timeStyle: "short",

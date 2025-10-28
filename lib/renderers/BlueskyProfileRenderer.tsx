@@ -1,6 +1,7 @@
 import React from "react";
 import type { ProfileRecord } from "../types/bluesky";
 import { BlueskyIcon } from "../components/BlueskyIcon";
+import { useAtProto } from "../providers/AtProtoProvider";
 
 export interface BlueskyProfileRendererProps {
 	record: ProfileRecord;
@@ -19,6 +20,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 	handle,
 	avatarUrl,
 }) => {
+	const { blueskyAppBaseUrl } = useAtProto();
 
 	if (error)
 		return (
@@ -28,7 +30,7 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 		);
 	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
 
-	const profileUrl = `https://bsky.app/profile/${did}`;
+	const profileUrl = `${blueskyAppBaseUrl}/profile/${did}`;
 	const rawWebsite = record.website?.trim();
 	const websiteHref = rawWebsite
 		? rawWebsite.match(/^https?:\/\//i)
