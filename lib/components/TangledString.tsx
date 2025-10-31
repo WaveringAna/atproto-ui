@@ -1,7 +1,7 @@
 import React from "react";
 import { AtProtoRecord } from "../core/AtProtoRecord";
 import { TangledStringRenderer } from "../renderers/TangledStringRenderer";
-import type { TangledStringRecord } from "../renderers/TangledStringRenderer";
+import type { TangledStringRecord } from "../types/tangled";
 import { useAtProto } from "../providers/AtProtoProvider";
 
 /**

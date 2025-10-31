@@ -23,6 +23,7 @@ const DEFAULT_SLINGSHOT = "https://slingshot.microcosm.blue";
 const DEFAULT_APPVIEW = "https://public.api.bsky.app";
 const DEFAULT_BLUESKY_APP = "https://bsky.app";
 const DEFAULT_TANGLED = "https://tangled.org";
+const DEFAULT_CONSTELLATION = "https://constellation.microcosm.blue";
 
 const ABSOLUTE_URL_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/;
 const SUPPORTED_DID_METHODS = ["plc", "web"] as const;
@@ -40,6 +41,7 @@ export const DEFAULT_CONFIG = {
 	blueskyAppviewService: DEFAULT_APPVIEW,
 	blueskyAppBaseUrl: DEFAULT_BLUESKY_APP,
 	tangledBaseUrl: DEFAULT_TANGLED,
+	constellationBaseUrl: DEFAULT_CONSTELLATION,
 } as const;
 
 export const SLINGSHOT_BASE_URL = DEFAULT_SLINGSHOT;

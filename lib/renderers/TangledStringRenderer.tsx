@@ -1,8 +1,6 @@
 import React from "react";
-import type { ShTangledString } from "@atcute/tangled";
 import { useAtProto } from "../providers/AtProtoProvider";
-
-export type TangledStringRecord = ShTangledString.Main;
+import type { TangledStringRecord } from "../types/tangled";
 
 export interface TangledStringRendererProps {
 	record: TangledStringRecord;

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from "react";
-import { AtProtoProvider } from "../lib";
+import { AtProtoProvider, TangledRepo } from "../lib";
 import "../lib/styles.css";
 import "./App.css";
 
@@ -381,6 +381,12 @@ const FullDemo: React.FC = () => {
 									did="nekomimi.pet"
 									rkey="3m45s553cys22"
 									showParent={false}
+								/>
+							</section>
+							<section style={panelStyle}>
+								<TangledRepo
+									did="did:plc:ttdrpj45ibqunmfhdsb4zdwq"
+									rkey="3m2sx5zpxzs22"
 								/>
 							</section>
 							<section style={panelStyle}>

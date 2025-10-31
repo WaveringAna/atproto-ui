@@ -19,7 +19,7 @@
     "sourceMap": true,
     "outDir": "./lib-dist",
     "rootDir": "./lib",
-    "types": ["@atcute/bluesky"]
+    "types": ["@atcute/bluesky", "@atcute/tangled"]
   },
   "include": ["lib/**/*.ts", "lib/**/*.tsx"]
 }

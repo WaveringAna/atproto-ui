@@ -26,6 +26,8 @@ export interface AtProtoProviderProps {
 	blueskyAppBaseUrl?: string;
 	/** Optional custom Tangled base URL for links. Defaults to https://tangled.org */
 	tangledBaseUrl?: string;
+	/** Optional custom Constellation API URL for backlinks. Defaults to https://constellation.microcosm.blue */
+	constellationBaseUrl?: string;
 }
 
 /**
@@ -42,6 +44,8 @@ interface AtProtoContextValue {
 	blueskyAppBaseUrl: string;
 	/** Normalized Tangled base URL for links. */
 	tangledBaseUrl: string;
+	/** Normalized Constellation API base URL for backlinks. */
+	constellationBaseUrl: string;
 	/** Cache for DID documents and handle mappings. */
 	didCache: DidCache;
 	/** Cache for fetched blob data. */
@@ -98,6 +102,7 @@ export function AtProtoProvider({
 	blueskyAppviewService,
 	blueskyAppBaseUrl,
 	tangledBaseUrl,
+	constellationBaseUrl,
 }: AtProtoProviderProps) {
 	const normalizedPlc = useMemo(
 		() =>
@@ -153,6 +158,15 @@ export function AtProtoProvider({
 			),
 		[tangledBaseUrl],
 	);
+	const normalizedConstellation = useMemo(
+		() =>
+			normalizeBaseUrl(
+				constellationBaseUrl && constellationBaseUrl.trim()
+					? constellationBaseUrl
+					: DEFAULT_CONFIG.constellationBaseUrl,
+			),
+		[constellationBaseUrl],
+	);
 	const resolver = useMemo(
 		() => new ServiceResolver({
 			plcDirectory: normalizedPlc,
@@ -181,11 +195,12 @@ export function AtProtoProvider({
 			blueskyAppviewService: normalizedAppview,
 			blueskyAppBaseUrl: normalizedBlueskyApp,
 			tangledBaseUrl: normalizedTangled,
+			constellationBaseUrl: normalizedConstellation,
 			didCache: cachesRef.current!.didCache,
 			blobCache: cachesRef.current!.blobCache,
 			recordCache: cachesRef.current!.recordCache,
 		}),
-		[resolver, normalizedPlc, normalizedAppview, normalizedBlueskyApp, normalizedTangled],
+		[resolver, normalizedPlc, normalizedAppview, normalizedBlueskyApp, normalizedTangled, normalizedConstellation],
 	);
 
 	return (
