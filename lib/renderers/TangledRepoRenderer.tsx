@@ -55,8 +55,8 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 	// Fetch language data from knot server only if languages not provided
 	const {
 		data: languagesData,
-		loading: languagesLoading,
-		error: languagesError,
+		loading: _languagesLoading,
+		error: _languagesError,
 	} = useRepoLanguages({
 		knot: knotUrl,
 		did,
@@ -94,10 +94,6 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 	const viewUrl =
 		canonicalUrl ??
 		`${tangledBaseUrl}/@${did}/${encodeURIComponent(record.name)}`;
-	const timestamp = new Date(record.createdAt).toLocaleString(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	});
 
 	const tangledIcon = (
 		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 25 25" style={{ display: "block" }}>
@@ -193,7 +189,7 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 						.slice(0, 2);
 					return topLanguages.length > 0 ? (
 						<div style={base.languageTags}>
-							{topLanguages.map((lang, index) => (
+							{topLanguages.map((lang) => (
 								<span key={lang.name} style={base.languageTag}>
 									{lang.name}
 								</span>
