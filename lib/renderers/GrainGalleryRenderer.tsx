@@ -41,6 +41,12 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 
 	const primaryName = authorDisplayName || authorHandle || "…";
 
+	// Memoize sorted photos to prevent re-sorting on every render
+	const sortedPhotos = React.useMemo(
+		() => [...photos].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+		[photos]
+	);
+
 	// Open lightbox
 	const openLightbox = React.useCallback((photoIndex: number) => {
 		setLightboxPhotoIndex(photoIndex);
@@ -74,12 +80,6 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [lightboxOpen, closeLightbox, goToPrevPhoto, goToNextPhoto]);
-
-	// Memoize sorted photos to prevent re-sorting on every render
-	const sortedPhotos = React.useMemo(
-		() => [...photos].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
-		[photos]
-	);
 
 	const isSinglePhoto = sortedPhotos.length === 1;
 
@@ -197,7 +197,12 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 
 			{isSinglePhoto ? (
 				<div style={styles.singlePhotoContainer}>
-					<GalleryPhotoItem key={`${sortedPhotos[0].did}-${sortedPhotos[0].rkey}`} photo={sortedPhotos[0]} isSingle={true} />
+					<GalleryPhotoItem 
+						key={`${sortedPhotos[0].did}-${sortedPhotos[0].rkey}`} 
+						photo={sortedPhotos[0]} 
+						isSingle={true} 
+						onClick={() => openLightbox(0)}
+					/>
 				</div>
 			) : (
 				<div style={styles.carouselContainer}>
@@ -219,14 +224,18 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 						</button>
 					)}
 					<div style={styles.photosGrid}>
-						{layoutPhotos.map((item) => (
-							<GalleryPhotoItem
-								key={`${item.did}-${item.rkey}`}
-								photo={item}
-								isSingle={false}
-								span={item.span}
-							/>
-						))}
+						{layoutPhotos.map((item) => {
+							const photoIndex = sortedPhotos.findIndex(p => p.did === item.did && p.rkey === item.rkey);
+							return (
+								<GalleryPhotoItem
+									key={`${item.did}-${item.rkey}`}
+									photo={item}
+									isSingle={false}
+									span={item.span}
+									onClick={() => openLightbox(photoIndex)}
+								/>
+							);
+						})}
 					</div>
 					{hasMultiplePages && currentPage < totalPages - 1 && (
 						<button
@@ -484,11 +493,195 @@ const calculateLayout = (photos: GrainGalleryPhoto[]) => {
 	return photosWithRatios.map((p) => ({ ...p, span: { row: 1, col: 1 } }));
 };
 
+// Lightbox component for fullscreen image viewing
+const Lightbox: React.FC<{
+	photo: GrainGalleryPhoto;
+	photoIndex: number;
+	totalPhotos: number;
+	onClose: () => void;
+	onNext: () => void;
+	onPrev: () => void;
+}> = ({ photo, photoIndex, totalPhotos, onClose, onNext, onPrev }) => {
+	const photoBlob = photo.record.photo;
+	const cdnUrl = isBlobWithCdn(photoBlob) ? photoBlob.cdnUrl : undefined;
+	const cid = cdnUrl ? undefined : extractCidFromBlob(photoBlob);
+	const { url: urlFromBlob, loading: photoLoading, error: photoError } = useBlob(photo.did, cid);
+	const url = cdnUrl || urlFromBlob;
+	const alt = photo.record.alt?.trim() || "grain.social photo";
+
+	return (
+		<div
+			style={{
+				position: "fixed",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				background: "rgba(0, 0, 0, 0.95)",
+				zIndex: 9999,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				padding: 20,
+			}}
+			onClick={onClose}
+		>
+			{/* Close button */}
+			<button
+				onClick={onClose}
+				style={{
+					position: "absolute",
+					top: 20,
+					right: 20,
+					width: 40,
+					height: 40,
+					border: "none",
+					borderRadius: "50%",
+					background: "rgba(255, 255, 255, 0.1)",
+					color: "white",
+					fontSize: 24,
+					cursor: "pointer",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					transition: "background 200ms ease",
+				}}
+				onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)")}
+				onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
+				aria-label="Close lightbox"
+			>
+				×
+			</button>
+
+			{/* Previous button */}
+			{totalPhotos > 1 && (
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						onPrev();
+					}}
+					style={{
+						position: "absolute",
+						left: 20,
+						top: "50%",
+						transform: "translateY(-50%)",
+						width: 50,
+						height: 50,
+						border: "none",
+						borderRadius: "50%",
+						background: "rgba(255, 255, 255, 0.1)",
+						color: "white",
+						fontSize: 24,
+						cursor: "pointer",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						transition: "background 200ms ease",
+					}}
+					onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)")}
+					onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
+					aria-label="Previous photo"
+				>
+					‹
+				</button>
+			)}
+
+			{/* Next button */}
+			{totalPhotos > 1 && (
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						onNext();
+					}}
+					style={{
+						position: "absolute",
+						right: 20,
+						top: "50%",
+						transform: "translateY(-50%)",
+						width: 50,
+						height: 50,
+						border: "none",
+						borderRadius: "50%",
+						background: "rgba(255, 255, 255, 0.1)",
+						color: "white",
+						fontSize: 24,
+						cursor: "pointer",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						transition: "background 200ms ease",
+					}}
+					onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)")}
+					onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
+					aria-label="Next photo"
+				>
+					›
+				</button>
+			)}
+
+			{/* Image */}
+			<div
+				style={{
+					maxWidth: "90vw",
+					maxHeight: "90vh",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+				onClick={(e) => e.stopPropagation()}
+			>
+				{url ? (
+					<img
+						src={url}
+						alt={alt}
+						style={{
+							maxWidth: "100%",
+							maxHeight: "100%",
+							objectFit: "contain",
+							borderRadius: 8,
+						}}
+					/>
+				) : (
+					<div
+						style={{
+							color: "white",
+							fontSize: 16,
+							textAlign: "center",
+						}}
+					>
+						{photoLoading ? "Loading…" : photoError ? "Failed to load" : "Unavailable"}
+					</div>
+				)}
+			</div>
+
+			{/* Photo counter */}
+			{totalPhotos > 1 && (
+				<div
+					style={{
+						position: "absolute",
+						bottom: 20,
+						left: "50%",
+						transform: "translateX(-50%)",
+						color: "white",
+						fontSize: 14,
+						background: "rgba(0, 0, 0, 0.5)",
+						padding: "8px 16px",
+						borderRadius: 20,
+					}}
+				>
+					{photoIndex + 1} / {totalPhotos}
+				</div>
+			)}
+		</div>
+	);
+};
+
 const GalleryPhotoItem: React.FC<{
 	photo: GrainGalleryPhoto;
 	isSingle: boolean;
 	span?: { row: number; col: number };
-}> = ({ photo, isSingle, span }) => {
+	onClick?: () => void;
+}> = ({ photo, isSingle, span, onClick }) => {
 	const [showAltText, setShowAltText] = React.useState(false);
 	const photoBlob = photo.record.photo;
 	const cdnUrl = isBlobWithCdn(photoBlob) ? photoBlob.cdnUrl : undefined;
@@ -518,7 +711,9 @@ const GalleryPhotoItem: React.FC<{
 					background: `var(--atproto-color-image-bg)`,
 					// Only apply aspect ratio for single photos; grid photos fill their cells
 					...(isSingle && aspect ? { aspectRatio: aspect } : {}),
+					cursor: onClick ? "pointer" : "default",
 				}}
+				onClick={onClick}
 			>
 				{url ? (
 					<img src={url} alt={alt} style={isSingle ? styles.photo : styles.photoGrid} />
