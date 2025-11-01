@@ -12,6 +12,7 @@ import {
 } from "../lib/components/BlueskyPost";
 import { BlueskyPostList } from "../lib/components/BlueskyPostList";
 import { BlueskyQuotePost } from "../lib/components/BlueskyQuotePost";
+import { GrainGallery } from "../lib/components/GrainGallery";
 import { useDidResolution } from "../lib/hooks/useDidResolution";
 import { useLatestRecord } from "../lib/hooks/useLatestRecord";
 import type { FeedPostRecord } from "../lib/types/bluesky";
@@ -283,6 +284,24 @@ const FullDemo: React.FC = () => {
 							<section style={panelStyle}>
 								<h3 style={sectionHeaderStyle}>Recent Posts</h3>
 								<BlueskyPostList did={did} />
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
+									grain.social Gallery Demo
+								</h3>
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Instagram-style photo gallery from grain.social
+								</p>
+								<GrainGallery
+									did="kat.meangirls.online"
+									rkey="3m2e2qikseq2f"
+								/>
 							</section>
 						</div>
 						<div style={columnStackStyle}>

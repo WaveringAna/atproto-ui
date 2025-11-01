@@ -12,6 +12,7 @@ export * from "./components/BlueskyPost";
 export * from "./components/BlueskyPostList";
 export * from "./components/BlueskyProfile";
 export * from "./components/BlueskyQuotePost";
+export * from "./components/GrainGallery";
 export * from "./components/LeafletDocument";
 export * from "./components/TangledRepo";
 export * from "./components/TangledString";
@@ -31,12 +32,14 @@ export * from "./hooks/useRepoLanguages";
 // Renderers
 export * from "./renderers/BlueskyPostRenderer";
 export * from "./renderers/BlueskyProfileRenderer";
+export * from "./renderers/GrainGalleryRenderer";
 export * from "./renderers/LeafletDocumentRenderer";
 export * from "./renderers/TangledRepoRenderer";
 export * from "./renderers/TangledStringRenderer";
 
 // Types
 export * from "./types/bluesky";
+export * from "./types/grain";
 export * from "./types/leaflet";
 export * from "./types/tangled";
 export * from "./types/theme";
