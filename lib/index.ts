@@ -16,6 +16,8 @@ export * from "./components/GrainGallery";
 export * from "./components/LeafletDocument";
 export * from "./components/TangledRepo";
 export * from "./components/TangledString";
+export * from "./components/CurrentlyPlaying";
+export * from "./components/LastPlayed";
 
 // Hooks
 export * from "./hooks/useAtProtoRecord";
@@ -36,12 +38,14 @@ export * from "./renderers/GrainGalleryRenderer";
 export * from "./renderers/LeafletDocumentRenderer";
 export * from "./renderers/TangledRepoRenderer";
 export * from "./renderers/TangledStringRenderer";
+export * from "./renderers/CurrentlyPlayingRenderer";
 
 // Types
 export * from "./types/bluesky";
 export * from "./types/grain";
 export * from "./types/leaflet";
 export * from "./types/tangled";
+export * from "./types/teal";
 export * from "./types/theme";
 
 // Utilities

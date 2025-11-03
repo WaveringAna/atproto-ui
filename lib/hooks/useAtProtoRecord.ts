@@ -142,27 +142,37 @@ export function useAtProtoRecord<T = unknown>({
 				const controller = new AbortController();
 
 				const fetchPromise = (async () => {
-					const { rpc } = await createAtprotoClient({
-						service: endpoint,
-					});
-					const res = await (
-						rpc as unknown as {
-							get: (
-								nsid: string,
-								opts: {
-									params: {
-										repo: string;
-										collection: string;
-										rkey: string;
-									};
-								},
-							) => Promise<{ ok: boolean; data: { value: T } }>;
+					try {
+						const { rpc } = await createAtprotoClient({
+							service: endpoint,
+						});
+						const res = await (
+							rpc as unknown as {
+								get: (
+									nsid: string,
+									opts: {
+										params: {
+											repo: string;
+											collection: string;
+											rkey: string;
+										};
+									},
+								) => Promise<{ ok: boolean; data: { value: T } }>;
+							}
+						).get("com.atproto.repo.getRecord", {
+							params: { repo: did, collection, rkey },
+						});
+						if (!res.ok) throw new Error("Failed to load record");
+						return (res.data as { value: T }).value;
+					} catch (err) {
+						// Provide helpful error for banned/unreachable Bluesky PDSes
+						if (endpoint.includes('.bsky.network')) {
+							throw new Error(
+								`Record unavailable. The Bluesky PDS (${endpoint}) may be unreachable or the account may be banned.`
+							);
 						}
-					).get("com.atproto.repo.getRecord", {
-						params: { repo: did, collection, rkey },
-					});
-					if (!res.ok) throw new Error("Failed to load record");
-					return (res.data as { value: T }).value;
+						throw err;
+					}
 				})();
 
 				return {

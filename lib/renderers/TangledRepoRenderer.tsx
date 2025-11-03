@@ -105,7 +105,7 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 		<div
 			style={{
 				...base.container,
-				background: `var(--atproto-color-bg-elevated)`,
+				background: `var(--atproto-color-bg)`,
 				borderWidth: "1px",
 				borderStyle: "solid",
 				borderColor: `var(--atproto-color-border)`,
@@ -116,7 +116,7 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 			<div
 				style={{
 					...base.header,
-					background: `var(--atproto-color-bg-elevated)`,
+					background: `var(--atproto-color-bg)`,
 				}}
 			>
 				<div style={base.headerTop}>
@@ -166,7 +166,7 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 				<div
 					style={{
 						...base.description,
-						background: `var(--atproto-color-bg-elevated)`,
+						background: `var(--atproto-color-bg)`,
 						color: `var(--atproto-color-text-secondary)`,
 					}}
 				>
@@ -178,7 +178,7 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 			<div
 				style={{
 					...base.languageSection,
-					background: `var(--atproto-color-bg-elevated)`,
+					background: `var(--atproto-color-bg)`,
 				}}
 			>
 				{/* Languages */}

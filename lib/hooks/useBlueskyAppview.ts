@@ -308,14 +308,14 @@ export function useBlueskyAppview<T = unknown>({
 		dispatch({ type: "SET_LOADING", loading: true });
 
 		// Use recordCache.ensure for deduplication and caching
-		const { promise, release } = recordCache.ensure<T>(
+		const { promise, release } = recordCache.ensure<{ record: T; source: "appview" | "slingshot" | "pds" }>(
 			did,
 			collection,
 			rkey,
 			() => {
 				const controller = new AbortController();
 
-				const fetchPromise = (async () => {
+				const fetchPromise = (async (): Promise<{ record: T; source: "appview" | "slingshot" | "pds" }> => {
 					let lastError: Error | undefined;
 
 					// Tier 1: Try Bluesky appview API
@@ -328,7 +328,7 @@ export function useBlueskyAppview<T = unknown>({
 								effectiveAppviewService,
 							);
 							if (result) {
-								return result;
+								return { record: result, source: "appview" };
 							}
 						} catch (err) {
 							lastError = err as Error;
@@ -341,7 +341,7 @@ export function useBlueskyAppview<T = unknown>({
 						const slingshotUrl = resolver.getSlingshotUrl();
 						const result = await fetchFromSlingshot<T>(did, collection, rkey, slingshotUrl);
 						if (result) {
-							return result;
+							return { record: result, source: "slingshot" };
 						}
 					} catch (err) {
 						lastError = err as Error;
@@ -357,13 +357,19 @@ export function useBlueskyAppview<T = unknown>({
 							pdsEndpoint,
 						);
 						if (result) {
-							return result;
+							return { record: result, source: "pds" };
 						}
 					} catch (err) {
 						lastError = err as Error;
 					}
 
-					// All tiers failed
+					// All tiers failed - provide helpful error for banned/unreachable Bluesky PDSes
+					if (pdsEndpoint.includes('.bsky.network')) {
+						throw new Error(
+							`Record unavailable. The Bluesky PDS (${pdsEndpoint}) may be unreachable or the account may be banned.`
+						);
+					}
+
 					throw lastError ?? new Error("Failed to fetch record from all sources");
 				})();
 
@@ -377,12 +383,12 @@ export function useBlueskyAppview<T = unknown>({
 		releaseRef.current = release;
 
 		promise
-			.then((record) => {
+			.then(({ record, source }) => {
 				if (!cancelled) {
 					dispatch({
 						type: "SET_SUCCESS",
 						record,
-						source: "appview",
+						source,
 					});
 				}
 			})

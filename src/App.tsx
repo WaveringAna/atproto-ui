@@ -13,6 +13,8 @@ import {
 import { BlueskyPostList } from "../lib/components/BlueskyPostList";
 import { BlueskyQuotePost } from "../lib/components/BlueskyQuotePost";
 import { GrainGallery } from "../lib/components/GrainGallery";
+import { CurrentlyPlaying } from "../lib/components/CurrentlyPlaying";
+import { LastPlayed } from "../lib/components/LastPlayed";
 import { useDidResolution } from "../lib/hooks/useDidResolution";
 import { useLatestRecord } from "../lib/hooks/useLatestRecord";
 import type { FeedPostRecord } from "../lib/types/bluesky";
@@ -302,6 +304,36 @@ const FullDemo: React.FC = () => {
 									did="kat.meangirls.online"
 									rkey="3m2e2qikseq2f"
 								/>
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
+									teal.fm Currently Playing
+								</h3>
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Currently playing track from teal.fm (refreshes every 15s)
+								</p>
+								<CurrentlyPlaying did="nekomimi.pet" />
+							</section>
+							<section style={panelStyle}>
+								<h3 style={sectionHeaderStyle}>
+									teal.fm Last Played
+								</h3>
+								<p
+									style={{
+										fontSize: 12,
+										color: `var(--demo-text-secondary)`,
+										margin: "0 0 8px",
+									}}
+								>
+									Most recent play from teal.fm feed
+								</p>
+								<LastPlayed did="nekomimi.pet" />
 							</section>
 						</div>
 						<div style={columnStackStyle}>
