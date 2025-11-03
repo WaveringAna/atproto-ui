@@ -121,14 +121,14 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 
 	if (error) {
 		return (
-			<div style={{ padding: 8, color: "crimson" }}>
+			<div role="alert" style={{ padding: 8, color: "crimson" }}>
 				Failed to load gallery.
 			</div>
 		);
 	}
 
 	if (loading && photos.length === 0) {
-		return <div style={{ padding: 8 }}>Loading gallery…</div>;
+		return <div role="status" aria-live="polite" style={{ padding: 8 }}>Loading gallery…</div>;
 	}
 
 	return (
@@ -155,7 +155,7 @@ export const GrainGalleryRenderer: React.FC<GrainGalleryRendererProps> = ({
 			<article style={styles.card}>
 				<header style={styles.header}>
 					{avatarUrl ? (
-						<img src={avatarUrl} alt="avatar" style={styles.avatarImg} />
+						<img src={avatarUrl} alt={`${authorDisplayName || authorHandle || 'User'}'s profile picture`} style={styles.avatarImg} />
 					) : (
 						<div style={styles.avatarPlaceholder} aria-hidden />
 					)}
@@ -511,6 +511,9 @@ const Lightbox: React.FC<{
 
 	return (
 		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label={`Photo ${photoIndex + 1} of ${totalPhotos}`}
 			style={{
 				position: "fixed",
 				top: 0,
@@ -580,7 +583,7 @@ const Lightbox: React.FC<{
 					}}
 					onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)")}
 					onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
-					aria-label="Previous photo"
+					aria-label={`Previous photo (${photoIndex} of ${totalPhotos})`}
 				>
 					‹
 				</button>
@@ -613,7 +616,7 @@ const Lightbox: React.FC<{
 					}}
 					onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)")}
 					onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
-					aria-label="Next photo"
+					aria-label={`Next photo (${photoIndex + 2} of ${totalPhotos})`}
 				>
 					›
 				</button>
@@ -705,15 +708,20 @@ const GalleryPhotoItem: React.FC<{
 
 	return (
 		<figure style={{ ...(isSingle ? styles.singlePhotoItem : styles.photoItem), ...gridItemStyle }}>
-			<div
+			<button
+				onClick={onClick}
+				aria-label={hasAlt ? `View photo: ${alt}` : "View photo"}
 				style={{
 					...(isSingle ? styles.singlePhotoMedia : styles.photoContainer),
 					background: `var(--atproto-color-image-bg)`,
 					// Only apply aspect ratio for single photos; grid photos fill their cells
 					...(isSingle && aspect ? { aspectRatio: aspect } : {}),
 					cursor: onClick ? "pointer" : "default",
+					border: "none",
+					padding: 0,
+					display: "block",
+					width: "100%",
 				}}
-				onClick={onClick}
 			>
 				{url ? (
 					<img src={url} alt={alt} style={isSingle ? styles.photo : styles.photoGrid} />
@@ -733,7 +741,10 @@ const GalleryPhotoItem: React.FC<{
 				)}
 				{hasAlt && (
 					<button
-						onClick={() => setShowAltText(!showAltText)}
+						onClick={(e) => {
+							e.stopPropagation();
+							setShowAltText(!showAltText);
+						}}
 						style={{
 							...styles.altBadge,
 							background: showAltText
@@ -745,11 +756,12 @@ const GalleryPhotoItem: React.FC<{
 						}}
 						title="Toggle alt text"
 						aria-label="Toggle alt text"
+						aria-pressed={showAltText}
 					>
 						ALT
 					</button>
 				)}
-			</div>
+			</button>
 			{hasAlt && showAltText && (
 				<figcaption
 					style={{

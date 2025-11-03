@@ -56,12 +56,12 @@ export const BlueskyPostRenderer: React.FC<BlueskyPostRendererProps> = ({
 
 	if (error) {
 		return (
-			<div style={{ padding: 8, color: "crimson" }}>
+			<div role="alert" style={{ padding: 8, color: "crimson" }}>
 				Failed to load post.
 			</div>
 		);
 	}
-	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
+	if (loading && !record) return <div role="status" aria-live="polite" style={{ padding: 8 }}>Loading…</div>;
 
 	const text = record.text;
 	const createdDate = new Date(record.createdAt);
@@ -181,11 +181,11 @@ const AuthorInfo: React.FC<{
 	</div>
 );
 
-const Avatar: React.FC<{ avatarUrl?: string }> = ({ avatarUrl }) =>
+const Avatar: React.FC<{ avatarUrl?: string; name?: string }> = ({ avatarUrl, name }) =>
 	avatarUrl ? (
-		<img src={avatarUrl} alt="avatar" style={baseStyles.avatarImg} />
+		<img src={avatarUrl} alt={`${name || 'User'}'s profile picture`} style={baseStyles.avatarImg} />
 	) : (
-		<div style={baseStyles.avatarPlaceholder} aria-hidden />
+		<div style={baseStyles.avatarPlaceholder} aria-hidden="true" />
 	);
 
 const ReplyInfo: React.FC<{
@@ -278,7 +278,7 @@ const PostContent: React.FC<{
 
 const ThreadLayout: React.FC<LayoutProps> = (props) => (
 	<div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-		<Avatar avatarUrl={props.avatarUrl} />
+		<Avatar avatarUrl={props.avatarUrl} name={props.authorDisplayName || props.authorHandle} />
 		<div style={{ flex: 1, minWidth: 0 }}>
 			<div
 				style={{
@@ -326,7 +326,7 @@ const ThreadLayout: React.FC<LayoutProps> = (props) => (
 const DefaultLayout: React.FC<LayoutProps> = (props) => (
 	<>
 		<header style={baseStyles.header}>
-			<Avatar avatarUrl={props.avatarUrl} />
+			<Avatar avatarUrl={props.avatarUrl} name={props.authorDisplayName || props.authorHandle} />
 			<AuthorInfo
 				primaryName={props.primaryName}
 				authorDisplayName={props.authorDisplayName}
@@ -563,6 +563,7 @@ const PostImage: React.FC<PostImageProps> = ({ image, did }) => {
 					<img src={url} alt={alt} style={imagesBase.img} />
 				) : (
 					<div
+						role={error ? "alert" : "status"}
 						style={{
 							...imagesBase.placeholder,
 							color: `var(--atproto-color-text-muted)`,

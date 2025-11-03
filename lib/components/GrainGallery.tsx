@@ -283,7 +283,7 @@ export const GrainGallery: React.FC<GrainGalleryProps> = React.memo(
 			displayHandle ?? formatDidForLabel(resolvedDid ?? handleOrDid);
 
 		if (!displayHandle && resolvingIdentity) {
-			return loadingIndicator || <div style={{ padding: 8 }}>Resolving handle…</div>;
+			return loadingIndicator || <div role="status" aria-live="polite" style={{ padding: 8 }}>Resolving handle…</div>;
 		}
 		if (!displayHandle && resolutionError) {
 			return (

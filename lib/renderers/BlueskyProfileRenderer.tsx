@@ -24,11 +24,11 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 
 	if (error)
 		return (
-			<div style={{ padding: 8, color: "crimson" }}>
+			<div role="alert" style={{ padding: 8, color: "crimson" }}>
 				Failed to load profile.
 			</div>
 		);
-	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
+	if (loading && !record) return <div role="status" aria-live="polite" style={{ padding: 8 }}>Loading…</div>;
 
 	const profileUrl = `${blueskyAppBaseUrl}/profile/${did}`;
 	const rawWebsite = record.website?.trim();
@@ -45,11 +45,11 @@ export const BlueskyProfileRenderer: React.FC<BlueskyProfileRendererProps> = ({
 		<div style={{ ...base.card, background: `var(--atproto-color-bg)`, borderColor: `var(--atproto-color-border)`, color: `var(--atproto-color-text)` }}>
 			<div style={base.header}>
 				{avatarUrl ? (
-					<img src={avatarUrl} alt="avatar" style={base.avatarImg} />
+					<img src={avatarUrl} alt={`${record.displayName || handle || did}'s profile picture`} style={base.avatarImg} />
 				) : (
 					<div
 						style={{ ...base.avatar, background: `var(--atproto-color-bg-elevated)` }}
-						aria-label="avatar"
+						aria-hidden="true"
 					/>
 				)}
 				<div style={{ flex: 1 }}>

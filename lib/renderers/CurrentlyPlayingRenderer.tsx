@@ -219,13 +219,13 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 
 	if (error)
 		return (
-			<div style={{ padding: 8, color: "var(--atproto-color-error)" }}>
+			<div role="alert" style={{ padding: 8, color: "var(--atproto-color-error)" }}>
 				Failed to load status.
 			</div>
 		);
 	if (loading && !record)
 		return (
-			<div style={{ padding: 8, color: "var(--atproto-color-text-secondary)" }}>
+			<div role="status" aria-live="polite" style={{ padding: 8, color: "var(--atproto-color-text-secondary)" }}>
 				Loading…
 			</div>
 		);
@@ -386,9 +386,15 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 			{/* Platform Selection Modal */}
 			{showPlatformModal && songlinkData && (
 				<div style={styles.modalOverlay} onClick={() => setShowPlatformModal(false)}>
-					<div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+					<div
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="platform-modal-title"
+						style={styles.modalContent}
+						onClick={(e) => e.stopPropagation()}
+					>
 						<div style={styles.modalHeader}>
-							<h3 style={styles.modalTitle}>Choose your streaming service</h3>
+							<h3 id="platform-modal-title" style={styles.modalTitle}>Choose your streaming service</h3>
 							<button
 								style={styles.closeButton}
 								onClick={() => setShowPlatformModal(false)}

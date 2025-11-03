@@ -84,11 +84,11 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 
 	if (error)
 		return (
-			<div style={{ padding: 8, color: "crimson" }}>
+			<div role="alert" style={{ padding: 8, color: "crimson" }}>
 				Failed to load repository.
 			</div>
 		);
-	if (loading && !record) return <div style={{ padding: 8 }}>Loading…</div>;
+	if (loading && !record) return <div role="status" aria-live="polite" style={{ padding: 8 }}>Loading…</div>;
 
 	// Construct the canonical URL: tangled.org/@[did]/[repo-name]
 	const viewUrl =

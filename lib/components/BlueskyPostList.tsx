@@ -73,7 +73,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = React.memo(({
 
 	if (error)
 		return (
-			<div style={{ padding: 8, color: "crimson" }}>
+			<div role="alert" style={{ padding: 8, color: "crimson" }}>
 				Failed to load posts.
 			</div>
 		);
@@ -242,11 +242,17 @@ const ListRow: React.FC<ListRowProps> = ({
 		resolvedReplyHandle,
 	);
 
+	const postPreview = text.slice(0, 100);
+	const ariaLabel = text
+		? `Post by ${did}: ${postPreview}${text.length > 100 ? '...' : ''}`
+		: `Post by ${did}`;
+
 	return (
 		<a
 			href={href}
 			target="_blank"
 			rel="noopener noreferrer"
+			aria-label={ariaLabel}
 			style={{
 				...listStyles.row,
 				color: `var(--atproto-color-text)`,
