@@ -290,9 +290,18 @@ interface RecordEnsureResult<T = unknown> {
 export class RecordCache {
 	private store = new Map<string, RecordCacheEntry>();
 	private inFlight = new Map<string, InFlightRecordEntry>();
+	// Collections that should not be cached (e.g., status records that change frequently)
+	private noCacheCollections = new Set<string>([
+		"fm.teal.alpha.actor.status",
+		"fm.teal.alpha.feed.play",
+	]);
 
 	private key(did: string, collection: string, rkey: string): string {
 		return `${did}::${collection}::${rkey}`;
+	}
+
+	private shouldCache(collection: string): boolean {
+		return !this.noCacheCollections.has(collection);
 	}
 
 	get<T = unknown>(
@@ -301,6 +310,8 @@ export class RecordCache {
 		rkey?: string,
 	): T | undefined {
 		if (!did || !collection || !rkey) return undefined;
+		// Don't return cached data for non-cacheable collections
+		if (!this.shouldCache(collection)) return undefined;
 		return this.store.get(this.key(did, collection, rkey))?.record as
 			| T
 			| undefined;
@@ -312,6 +323,8 @@ export class RecordCache {
 		rkey: string,
 		record: T,
 	): void {
+		// Don't cache records for non-cacheable collections
+		if (!this.shouldCache(collection)) return;
 		this.store.set(this.key(did, collection, rkey), {
 			record,
 			timestamp: Date.now(),

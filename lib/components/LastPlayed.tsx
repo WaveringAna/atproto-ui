@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useLatestRecord } from "../hooks/useLatestRecord";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { CurrentlyPlayingRenderer } from "../renderers/CurrentlyPlayingRenderer";
-import type { TealFeedPlayRecord } from "../types/teal";
+import type { TealFeedPlayRecord, TealActorStatusRecord } from "../types/teal";
 
 /**
  * Props for rendering the last played track from teal.fm feed.
@@ -29,7 +29,7 @@ export interface LastPlayedProps {
  */
 export type LastPlayedRendererInjectedProps = {
 	/** Loaded teal.fm feed play record value. */
-	record: TealFeedPlayRecord;
+	record: TealActorStatusRecord;
 	/** Indicates whether the record is currently loading. */
 	loading: boolean;
 	/** Fetch error, if any. */
@@ -40,10 +40,6 @@ export type LastPlayedRendererInjectedProps = {
 	did: string;
 	/** Record key for the play record. */
 	rkey: string;
-	/** Auto-refresh music data and album art. */
-	autoRefresh?: boolean;
-	/** Refresh interval in milliseconds. */
-	refreshInterval?: number;
 	/** Handle to display in not listening state */
 	handle?: string;
 };
@@ -75,9 +71,24 @@ export const LastPlayed: React.FC<LastPlayedProps> = React.memo(({
 	// Resolve handle from DID
 	const { handle } = useDidResolution(did);
 
+	// Auto-refresh key for refetching teal.fm record
+	const [refreshKey, setRefreshKey] = React.useState(0);
+
+	// Auto-refresh interval
+	React.useEffect(() => {
+		if (!autoRefresh) return;
+
+		const interval = setInterval(() => {
+			setRefreshKey((prev) => prev + 1);
+		}, refreshInterval);
+
+		return () => clearInterval(interval);
+	}, [autoRefresh, refreshInterval]);
+
 	const { record, rkey, loading, error, empty } = useLatestRecord<TealFeedPlayRecord>(
 		did,
-		LAST_PLAYED_COLLECTION
+		LAST_PLAYED_COLLECTION,
+		refreshKey,
 	);
 
 	// Normalize TealFeedPlayRecord to match TealActorStatusRecord structure
@@ -145,9 +156,7 @@ export const LastPlayed: React.FC<LastPlayedProps> = React.memo(({
 			colorScheme={colorScheme}
 			did={did}
 			rkey={rkey || "unknown"}
-			autoRefresh={autoRefresh}
 			label="LAST PLAYED"
-			refreshInterval={refreshInterval}
 			handle={handle}
 		/>
 	);

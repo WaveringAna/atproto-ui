@@ -236,6 +236,10 @@ export function useBlueskyAppview<T = unknown>({
 }: UseBlueskyAppviewOptions): UseBlueskyAppviewResult<T> {
 	const { recordCache, blueskyAppviewService, resolver } = useAtProto();
 	const effectiveAppviewService = appviewService ?? blueskyAppviewService;
+	
+	// Only use this hook for Bluesky collections (app.bsky.*)
+	const isBlueskyCollection = collection?.startsWith("app.bsky.");
+	
 	const {
 		did,
 		error: didError,
@@ -261,6 +265,18 @@ export function useBlueskyAppview<T = unknown>({
 
 		// Early returns for missing inputs or resolution errors
 		if (!handleOrDid || !collection || !rkey) {
+			if (!cancelled) dispatch({ type: "RESET" });
+			return () => {
+				cancelled = true;
+				if (releaseRef.current) {
+					releaseRef.current();
+					releaseRef.current = undefined;
+				}
+			};
+		}
+		
+		// Return early if not a Bluesky collection - this hook should not be used for other lexicons
+		if (!isBlueskyCollection) {
 			if (!cancelled) dispatch({ type: "RESET" });
 			return () => {
 				cancelled = true;
@@ -683,6 +699,15 @@ export async function callListRecords<T>(
 	};
 }> {
 	const { rpc } = await createAtprotoClient({ service });
+
+	const params: Record<string, unknown> = {
+		repo: did,
+		collection,
+		limit,
+		cursor,
+		reverse: false,
+	};
+
 	return await (rpc as unknown as {
 		get: (
 			nsid: string,
@@ -695,13 +720,7 @@ export async function callListRecords<T>(
 			};
 		}>;
 	}).get("com.atproto.repo.listRecords", {
-		params: {
-			repo: did,
-			collection,
-			limit,
-			cursor,
-			reverse: false,
-		},
+		params,
 	});
 }
 

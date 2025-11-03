@@ -15,6 +15,10 @@ export interface AtProtoRecordKey {
 	collection?: string;
 	/** Record key string uniquely identifying the record within the collection. */
 	rkey?: string;
+	/** Force bypass cache and refetch from network. Useful for auto-refresh scenarios. */
+	bypassCache?: boolean;
+	/** Internal refresh trigger - changes to this value force a refetch. */
+	_refreshKey?: number;
 }
 
 /**
@@ -42,12 +46,16 @@ export interface AtProtoRecordState<T = unknown> {
  * @param did - DID (or handle before resolution) that owns the record.
  * @param collection - NSID collection from which to fetch the record.
  * @param rkey - Record key identifying the record within the collection.
+ * @param bypassCache - Force bypass cache and refetch from network. Useful for auto-refresh scenarios.
+ * @param _refreshKey - Internal parameter used to trigger refetches.
  * @returns {AtProtoRecordState<T>} Object containing the resolved record, any error, and a loading flag.
  */
 export function useAtProtoRecord<T = unknown>({
 	did: handleOrDid,
 	collection,
 	rkey,
+	bypassCache = false,
+	_refreshKey = 0,
 }: AtProtoRecordKey): AtProtoRecordState<T> {
 	const { recordCache } = useAtProto();
 	const isBlueskyCollection = collection?.startsWith("app.bsky.");
@@ -133,6 +141,66 @@ export function useAtProtoRecord<T = unknown>({
 
 		assignState({ loading: true, error: undefined, record: undefined });
 
+		// Bypass cache if requested (for auto-refresh scenarios)
+		if (bypassCache) {
+			assignState({ loading: true, error: undefined });
+
+			// Skip cache and fetch directly
+			const controller = new AbortController();
+
+			const fetchPromise = (async () => {
+				try {
+					const { rpc } = await createAtprotoClient({
+						service: endpoint,
+					});
+					const res = await (
+						rpc as unknown as {
+							get: (
+								nsid: string,
+								opts: {
+									params: {
+										repo: string;
+										collection: string;
+										rkey: string;
+									};
+								},
+							) => Promise<{ ok: boolean; data: { value: T } }>;
+						}
+					).get("com.atproto.repo.getRecord", {
+						params: { repo: did, collection, rkey },
+					});
+					if (!res.ok) throw new Error("Failed to load record");
+					return (res.data as { value: T }).value;
+				} catch (err) {
+					// Provide helpful error for banned/unreachable Bluesky PDSes
+					if (endpoint.includes('.bsky.network')) {
+						throw new Error(
+							`Record unavailable. The Bluesky PDS (${endpoint}) may be unreachable or the account may be banned.`
+						);
+					}
+					throw err;
+				}
+			})();
+
+			fetchPromise
+				.then((record) => {
+					if (!cancelled) {
+						assignState({ record, loading: false });
+					}
+				})
+				.catch((e) => {
+					if (!cancelled) {
+						const err = e instanceof Error ? e : new Error(String(e));
+						assignState({ error: err, loading: false });
+					}
+				});
+
+			return () => {
+				cancelled = true;
+				controller.abort();
+			};
+		}
+
 		// Use recordCache.ensure for deduplication and caching
 		const { promise, release } = recordCache.ensure<T>(
 			did,
@@ -215,6 +283,8 @@ export function useAtProtoRecord<T = unknown>({
 		didError,
 		endpointError,
 		recordCache,
+		bypassCache,
+		_refreshKey,
 	]);
 
 	// Return Bluesky result for app.bsky.* collections

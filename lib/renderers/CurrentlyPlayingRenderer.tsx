@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { TealActorStatusRecord } from "../types/teal";
 
 export interface CurrentlyPlayingRendererProps {
@@ -8,11 +8,8 @@ export interface CurrentlyPlayingRendererProps {
 	did: string;
 	rkey: string;
 	colorScheme?: "light" | "dark" | "system";
-	autoRefresh?: boolean;
 	/** Label to display (e.g., "CURRENTLY PLAYING", "LAST PLAYED"). Defaults to "CURRENTLY PLAYING". */
 	label?: string;
-	/** Refresh interval in milliseconds. Defaults to 15000 (15 seconds). */
-	refreshInterval?: number;
 	/** Handle to display in not listening state */
 	handle?: string;
 }
@@ -41,29 +38,16 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 	record,
 	error,
 	loading,
-	autoRefresh = true,
 	label = "CURRENTLY PLAYING",
-	refreshInterval = 15000,
 	handle,
 }) => {
 	const [albumArt, setAlbumArt] = useState<string | undefined>(undefined);
 	const [artworkLoading, setArtworkLoading] = useState(true);
 	const [songlinkData, setSonglinkData] = useState<SonglinkResponse | undefined>(undefined);
 	const [showPlatformModal, setShowPlatformModal] = useState(false);
-	const [refreshKey, setRefreshKey] = useState(0);
+	const previousTrackIdentityRef = useRef<string>("");
 
-	// Auto-refresh interval
-	useEffect(() => {
-		if (!autoRefresh) return;
-
-		const interval = setInterval(() => {
-			// Reset loading state before refresh
-			setArtworkLoading(true);
-			setRefreshKey((prev) => prev + 1);
-		}, refreshInterval);
-
-		return () => clearInterval(interval);
-	}, [autoRefresh, refreshInterval]);
+	// Auto-refresh interval removed - handled by AtProtoRecord
 
 	useEffect(() => {
 		if (!record) return;
@@ -77,9 +61,24 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 			return;
 		}
 
-		// Reset loading state at start of fetch
-		if (refreshKey > 0) {
+		// Create a unique identity for this track
+		const trackIdentity = `${trackName}::${artistName}`;
+
+		// Check if the track has actually changed
+		const trackHasChanged = trackIdentity !== previousTrackIdentityRef.current;
+
+		// Update tracked identity
+		previousTrackIdentityRef.current = trackIdentity;
+
+		// Only reset loading state and clear data when track actually changes
+		// This prevents the loading flicker when auto-refreshing the same track
+		if (trackHasChanged) {
+			console.log(`[teal.fm] 🎵 Track changed: "${trackName}" by ${artistName}`);
 			setArtworkLoading(true);
+			setAlbumArt(undefined);
+			setSonglinkData(undefined);
+		} else {
+			console.log(`[teal.fm] 🔄 Auto-refresh: same track still playing ("${trackName}" by ${artistName})`);
 		}
 
 		let cancelled = false;
@@ -100,11 +99,19 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 						// Extract album art from Songlink data
 						const entityId = data.entityUniqueId;
 						const entity = data.entitiesByUniqueId?.[entityId];
+
+						// Debug: Log the entity structure to see what fields are available
+						console.log(`[teal.fm] ISRC entity data:`, { entityId, entity });
+
 						if (entity?.thumbnailUrl) {
 							console.log(`[teal.fm] ✓ Found album art via ISRC lookup`);
 							setAlbumArt(entity.thumbnailUrl);
 						} else {
-							console.warn(`[teal.fm] ISRC lookup succeeded but no thumbnail found`);
+							console.warn(`[teal.fm] ISRC lookup succeeded but no thumbnail found`, {
+								entityId,
+								entityKeys: entity ? Object.keys(entity) : 'no entity',
+								entity
+							});
 						}
 						setArtworkLoading(false);
 						return;
@@ -187,11 +194,19 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 						if (!albumArt) {
 							const entityId = data.entityUniqueId;
 							const entity = data.entitiesByUniqueId?.[entityId];
+
+							// Debug: Log the entity structure to see what fields are available
+							console.log(`[teal.fm] Songlink originUrl entity data:`, { entityId, entity });
+
 							if (entity?.thumbnailUrl) {
 								console.log(`[teal.fm] ✓ Found album art via Songlink originUrl lookup`);
 								setAlbumArt(entity.thumbnailUrl);
 							} else {
-								console.warn(`[teal.fm] Songlink lookup succeeded but no thumbnail found`);
+								console.warn(`[teal.fm] Songlink lookup succeeded but no thumbnail found`, {
+									entityId,
+									entityKeys: entity ? Object.keys(entity) : 'no entity',
+									entity
+								});
 							}
 						}
 					} else {
@@ -215,7 +230,7 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 		return () => {
 			cancelled = true;
 		};
-	}, [record, refreshKey]); // Add refreshKey to trigger refetch
+	}, [record]); // Runs on record change
 
 	if (error)
 		return (
@@ -266,13 +281,37 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 
 	const artistNames = item.artists.map((a) => a.artistName).join(", ");
 
-	const platformConfig: Record<string, { name: string; icon: string; color: string }> = {
-		spotify: { name: "Spotify", icon: "♫", color: "#1DB954" },
-		appleMusic: { name: "Apple Music", icon: "🎵", color: "#FA243C" },
-		youtube: { name: "YouTube", icon: "▶", color: "#FF0000" },
-		youtubeMusic: { name: "YouTube Music", icon: "▶", color: "#FF0000" },
-		tidal: { name: "Tidal", icon: "🌊", color: "#00FFFF" },
-		bandcamp: { name: "Bandcamp", icon: "△", color: "#1DA0C3" },
+	const platformConfig: Record<string, { name: string; svg: string; color: string }> = {
+		spotify: { 
+			name: "Spotify", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path fill="#1ed760" d="M248 8C111.1 8 0 119.1 0 256s111.1 248 248 248 248-111.1 248-248S384.9 8 248 8Z"/><path d="M406.6 231.1c-5.2 0-8.4-1.3-12.9-3.9-71.2-42.5-198.5-52.7-280.9-29.7-3.6 1-8.1 2.6-12.9 2.6-13.2 0-23.3-10.3-23.3-23.6 0-13.6 8.4-21.3 17.4-23.9 35.2-10.3 74.6-15.2 117.5-15.2 73 0 149.5 15.2 205.4 47.8 7.8 4.5 12.9 10.7 12.9 22.6 0 13.6-11 23.3-23.2 23.3zm-31 76.2c-5.2 0-8.7-2.3-12.3-4.2-62.5-37-155.7-51.9-238.6-29.4-4.8 1.3-7.4 2.6-11.9 2.6-10.7 0-19.4-8.7-19.4-19.4s5.2-17.8 15.5-20.7c27.8-7.8 56.2-13.6 97.8-13.6 64.9 0 127.6 16.1 177 45.5 8.1 4.8 11.3 11 11.3 19.7-.1 10.8-8.5 19.5-19.4 19.5zm-26.9 65.6c-4.2 0-6.8-1.3-10.7-3.6-62.4-37.6-135-39.2-206.7-24.5-3.9 1-9 2.6-11.9 2.6-9.7 0-15.8-7.7-15.8-15.8 0-10.3 6.1-15.2 13.6-16.8 81.9-18.1 165.6-16.5 237 26.2 6.1 3.9 9.7 7.4 9.7 16.5s-7.1 15.4-15.2 15.4z"/></svg>', 
+			color: "#1DB954" 
+		},
+		appleMusic: { 
+			name: "Apple Music", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 361 361"><defs><linearGradient id="apple-grad" x1="180" y1="358.6" x2="180" y2="7.76" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:#FA233B"/><stop offset="1" style="stop-color:#FB5C74"/></linearGradient></defs><path fill="url(#apple-grad)" d="M360 112.61V247.39c0 4.3 0 8.6-.02 12.9-.02 3.62-.06 7.24-.16 10.86-.21 7.89-.68 15.84-2.08 23.64-1.42 7.92-3.75 15.29-7.41 22.49-3.6 7.07-8.3 13.53-13.91 19.14-5.61 5.61-12.08 10.31-19.15 13.91-7.19 3.66-14.56 5.98-22.47 7.41-7.8 1.4-15.76 1.87-23.65 2.08-3.62.1-7.24.14-10.86.16-4.3.03-8.6.02-12.9.02H112.61c-4.3 0-8.6 0-12.9-.02-3.62-.02-7.24-.06-10.86-.16-7.89-.21-15.85-.68-23.65-2.08-7.92-1.42-15.28-3.75-22.47-7.41-7.07-3.6-13.54-8.3-19.15-13.91-5.61-5.61-10.31-12.07-13.91-19.14-3.66-7.2-5.99-14.57-7.41-22.49-1.4-7.8-1.87-15.76-2.08-23.64-.1-3.62-.14-7.24-.16-10.86C0 255.99 0 251.69 0 247.39V112.61c0-4.3 0-8.6.02-12.9.02-3.62.06-7.24.16-10.86.21-7.89.68-15.84 2.08-23.64 1.42-7.92 3.75-15.29 7.41-22.49 3.6-7.07 8.3-13.53 13.91-19.14 5.61-5.61 12.08-10.31 19.15-13.91 7.19-3.66 14.56-5.98 22.47-7.41 7.8-1.4 15.76-1.87 23.65-2.08 3.62-.1 7.24-.14 10.86-.16C104.01 0 108.31 0 112.61 0h134.77c4.3 0 8.6 0 12.9.02 3.62.02 7.24.06 10.86.16 7.89.21 15.85.68 23.65 2.08 7.92 1.42 15.28 3.75 22.47 7.41 7.07 3.6 13.54 8.3 19.15 13.91 5.61 5.61 10.31 12.07 13.91 19.14 3.66 7.2 5.99 14.57 7.41 22.49 1.4 7.8 1.87 15.76 2.08 23.64.1 3.62.14 7.24.16 10.86.03 4.3.02 8.6.02 12.9z"/><path fill="#FFF" d="M254.5 55c-.87.08-8.6 1.45-9.53 1.64l-107 21.59-.04.01c-2.79.59-4.98 1.58-6.67 3-2.04 1.71-3.17 4.13-3.6 6.95-.09.6-.24 1.82-.24 3.62v133.92c0 3.13-.25 6.17-2.37 8.76-2.12 2.59-4.74 3.37-7.81 3.99-2.33.47-4.66.94-6.99 1.41-8.84 1.78-14.59 2.99-19.8 5.01-4.98 1.93-8.71 4.39-11.68 7.51-5.89 6.17-8.28 14.54-7.46 22.38.7 6.69 3.71 13.09 8.88 17.82 3.49 3.2 7.85 5.63 12.99 6.66 5.33 1.07 11.01.7 19.31-.98 4.42-.89 8.56-2.28 12.5-4.61 3.9-2.3 7.24-5.37 9.85-9.11 2.62-3.75 4.31-7.92 5.24-12.35.96-4.57 1.19-8.7 1.19-13.26V128.82c0-6.22 1.76-7.86 6.78-9.08l93.09-18.75c5.79-1.11 8.52.54 8.52 6.61v79.29c0 3.14-.03 6.32-2.17 8.92-2.12 2.59-4.74 3.37-7.81 3.99-2.33.47-4.66.94-6.99 1.41-8.84 1.78-14.59 2.99-19.8 5.01-4.98 1.93-8.71 4.39-11.68 7.51-5.89 6.17-8.49 14.54-7.67 22.38.7 6.69 3.92 13.09 9.09 17.82 3.49 3.2 7.85 5.56 12.99 6.6 5.33 1.07 11.01.69 19.31-.98 4.42-.89 8.56-2.22 12.5-4.55 3.9-2.3 7.24-5.37 9.85-9.11 2.62-3.75 4.31-7.92 5.24-12.35.96-4.57 1-8.7 1-13.26V64.46c0-6.16-3.25-9.96-9.04-9.46z"/></svg>', 
+			color: "#FA243C" 
+		},
+		youtube: { 
+			name: "YouTube", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><g transform="scale(.75)"><path fill="red" d="M199.917 105.63s-84.292 0-105.448 5.497c-11.328 3.165-20.655 12.493-23.82 23.987-5.498 21.156-5.498 64.969-5.498 64.969s0 43.979 5.497 64.802c3.165 11.494 12.326 20.655 23.82 23.82 21.323 5.664 105.448 5.664 105.448 5.664s84.459 0 105.615-5.497c11.494-3.165 20.655-12.16 23.654-23.82 5.664-20.99 5.664-64.803 5.664-64.803s.166-43.98-5.664-65.135c-2.999-11.494-12.16-20.655-23.654-23.654-21.156-5.83-105.615-5.83-105.615-5.83zm-26.82 53.974 70.133 40.479-70.133 40.312v-80.79z"/><path fill="#fff" d="m173.097 159.604 70.133 40.479-70.133 40.312v-80.79z"/></g></svg>', 
+			color: "#FF0000" 
+		},
+		youtubeMusic: { 
+			name: "YouTube Music", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 176"><circle fill="#FF0000" cx="88" cy="88" r="88"/><path fill="#FFF" d="M88 46c23.1 0 42 18.8 42 42s-18.8 42-42 42-42-18.8-42-42 18.8-42 42-42m0-4c-25.4 0-46 20.6-46 46s20.6 46 46 46 46-20.6 46-46-20.6-46-46-46z"/><path fill="#FFF" d="m72 111 39-24-39-22z"/></svg>', 
+			color: "#FF0000" 
+		},
+		tidal: { 
+			name: "Tidal", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 0c141.385 0 256 114.615 256 256S397.385 512 256 512 0 397.385 0 256 114.615 0 256 0zm50.384 219.459-50.372 50.383 50.379 50.391-50.382 50.393-50.395-50.393 50.393-50.389-50.393-50.39 50.395-50.372 50.38 50.369 50.389-50.375 50.382 50.382-50.382 50.392-50.394-50.391zm-100.767-.001-50.392 50.392-50.385-50.392 50.385-50.382 50.392 50.382z"/></svg>', 
+			color: "#000000" 
+		},
+		bandcamp: { 
+			name: "Bandcamp", 
+			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#1DA0C3" d="M0 156v200h172l84-200z"/></svg>', 
+			color: "#1DA0C3" 
+		},
 	};
 
 	const availablePlatforms = songlinkData
@@ -420,7 +459,10 @@ export const CurrentlyPlayingRenderer: React.FC<CurrentlyPlayingRendererProps> =
 										onClick={() => setShowPlatformModal(false)}
 										data-teal-platform="true"
 									>
-										<span style={styles.platformIcon}>{config.icon}</span>
+										<span 
+											style={styles.platformIcon}
+											dangerouslySetInnerHTML={{ __html: config.svg }}
+										/>
 										<span style={styles.platformName}>{config.name}</span>
 										<svg
 											width="20"

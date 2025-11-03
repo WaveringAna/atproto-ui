@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAtProtoRecord } from "../hooks/useAtProtoRecord";
 
 /**
@@ -15,6 +15,10 @@ interface AtProtoRecordRenderProps<T> {
 	fallback?: React.ReactNode;
 	/** React node shown while the record is being fetched. */
 	loadingIndicator?: React.ReactNode;
+	/** Auto-refresh interval in milliseconds. When set, the record will be refetched at this interval. */
+	refreshInterval?: number;
+	/** Comparison function to determine if a record has changed. Used to prevent unnecessary re-renders during auto-refresh. */
+	compareRecords?: (prev: T | undefined, next: T | undefined) => boolean;
 }
 
 /**
@@ -61,6 +65,9 @@ export type AtProtoRecordProps<T = unknown> =
  *
  * When no custom renderer is provided, displays the record as formatted JSON.
  *
+ * **Auto-refresh**: Set `refreshInterval` to automatically refetch the record at the specified interval.
+ * The component intelligently avoids re-rendering if the record hasn't changed (using `compareRecords`).
+ *
  * @example
  * ```tsx
  * // Fetch mode - retrieves record from network
@@ -81,6 +88,19 @@ export type AtProtoRecordProps<T = unknown> =
  * />
  * ```
  *
+ * @example
+ * ```tsx
+ * // Auto-refresh mode - refetches every 15 seconds
+ * <AtProtoRecord
+ *   did="did:plc:example"
+ *   collection="fm.teal.alpha.actor.status"
+ *   rkey="self"
+ *   refreshInterval={15000}
+ *   compareRecords={(prev, next) => JSON.stringify(prev) === JSON.stringify(next)}
+ *   renderer={MyCustomRenderer}
+ * />
+ * ```
+ *
  * @param props - Either fetch props (did/collection/rkey) or prefetch props (record).
  * @returns A rendered AT Protocol record with loading/error states handled.
  */
@@ -89,22 +109,64 @@ export function AtProtoRecord<T = unknown>(props: AtProtoRecordProps<T>) {
 		renderer: Renderer,
 		fallback = null,
 		loadingIndicator = "Loading…",
+		refreshInterval,
+		compareRecords,
 	} = props;
 	const hasProvidedRecord = "record" in props;
 	const providedRecord = hasProvidedRecord ? props.record : undefined;
+
+	// Extract fetch props for logging
+	const fetchDid = hasProvidedRecord ? undefined : (props as any).did;
+	const fetchCollection = hasProvidedRecord ? undefined : (props as any).collection;
+	const fetchRkey = hasProvidedRecord ? undefined : (props as any).rkey;
+
+	// State for managing auto-refresh
+	const [refreshKey, setRefreshKey] = useState(0);
+	const [stableRecord, setStableRecord] = useState<T | undefined>(providedRecord);
+	const previousRecordRef = useRef<T | undefined>(providedRecord);
+
+	// Auto-refresh interval
+	useEffect(() => {
+		if (!refreshInterval || hasProvidedRecord) return;
+
+		const interval = setInterval(() => {
+			setRefreshKey((prev) => prev + 1);
+		}, refreshInterval);
+
+		return () => clearInterval(interval);
+	}, [refreshInterval, hasProvidedRecord, fetchCollection, fetchDid]);
 
 	const {
 		record: fetchedRecord,
 		error,
 		loading,
 	} = useAtProtoRecord<T>({
-		did: hasProvidedRecord ? undefined : props.did,
-		collection: hasProvidedRecord ? undefined : props.collection,
-		rkey: hasProvidedRecord ? undefined : props.rkey,
+		did: fetchDid,
+		collection: fetchCollection,
+		rkey: fetchRkey,
+		bypassCache: !!refreshInterval && refreshKey > 0, // Bypass cache on auto-refresh (but not initial load)
+		_refreshKey: refreshKey, // Force hook to re-run
 	});
 
-	const record = providedRecord ?? fetchedRecord;
-	const isLoading = loading && !providedRecord;
+	// Determine which record to use
+	const currentRecord = providedRecord ?? fetchedRecord;
+
+	// Handle record changes with optional comparison
+	useEffect(() => {
+		if (!currentRecord) return;
+
+		const hasChanged = compareRecords
+			? !compareRecords(previousRecordRef.current, currentRecord)
+			: previousRecordRef.current !== currentRecord;
+
+		if (hasChanged) {
+			setStableRecord(currentRecord);
+			previousRecordRef.current = currentRecord;
+		}
+	}, [currentRecord, compareRecords]);
+
+	const record = stableRecord;
+	const isLoading = loading && !providedRecord && !stableRecord;
 
 	if (error && !record) return <>{fallback}</>;
 	if (!record) return <>{isLoading ? loadingIndicator : fallback}</>;

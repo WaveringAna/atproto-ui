@@ -21,19 +21,21 @@ export interface LatestRecordState<T = unknown> {
 
 /**
  * Fetches the most recent record from a collection using `listRecords(limit=3)`.
- * 
+ *
  * Note: Slingshot does not support listRecords, so this always queries the actor's PDS directly.
- * 
+ *
  * Records with invalid timestamps (before 2023, when ATProto was created) are automatically
  * skipped, and additional records are fetched to find a valid one.
  *
  * @param handleOrDid - Handle or DID that owns the collection.
  * @param collection - NSID of the collection to query.
+ * @param refreshKey - Optional key that when changed, triggers a refetch. Use for auto-refresh scenarios.
  * @returns {LatestRecordState<T>} Object reporting the latest record value, derived rkey, loading status, emptiness, and any error.
  */
 export function useLatestRecord<T = unknown>(
 	handleOrDid: string | undefined,
 	collection: string,
+	refreshKey?: number,
 ): LatestRecordState<T> {
 	const {
 		did,
@@ -157,6 +159,7 @@ export function useLatestRecord<T = unknown>(
 		resolvingEndpoint,
 		didError,
 		endpointError,
+		refreshKey,
 	]);
 
 	return state;

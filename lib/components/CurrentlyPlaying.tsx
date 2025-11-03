@@ -22,8 +22,10 @@ export interface CurrentlyPlayingProps {
 	loadingIndicator?: React.ReactNode;
 	/** Preferred color scheme for theming. */
 	colorScheme?: "light" | "dark" | "system";
-	/** Auto-refresh music data and album art every 15 seconds. Defaults to true. */
+	/** Auto-refresh music data and album art. When true, refreshes every 15 seconds. Defaults to true. */
 	autoRefresh?: boolean;
+	/** Refresh interval in milliseconds. Defaults to 15000 (15 seconds). Only used when autoRefresh is true. */
+	refreshInterval?: number;
 }
 
 /**
@@ -42,18 +44,32 @@ export type CurrentlyPlayingRendererInjectedProps = {
 	did: string;
 	/** Record key for the status. */
 	rkey: string;
-	/** Auto-refresh music data and album art every 15 seconds. */
-	autoRefresh?: boolean;
 	/** Label to display. */
 	label?: string;
-	/** Refresh interval in milliseconds. */
-	refreshInterval?: number;
 	/** Handle to display in not listening state */
 	handle?: string;
 };
 
 /** NSID for teal.fm actor status records. */
 export const CURRENTLY_PLAYING_COLLECTION = "fm.teal.alpha.actor.status";
+
+/**
+ * Compares two teal.fm status records to determine if the track has changed.
+ * Used to prevent unnecessary re-renders during auto-refresh when the same track is still playing.
+ */
+const compareTealRecords = (
+	prev: TealActorStatusRecord | undefined,
+	next: TealActorStatusRecord | undefined
+): boolean => {
+	if (!prev || !next) return prev === next;
+	
+	const prevTrack = prev.item.trackName;
+	const nextTrack = next.item.trackName;
+	const prevArtist = prev.item.artists[0]?.artistName;
+	const nextArtist = next.item.artists[0]?.artistName;
+	
+	return prevTrack === nextTrack && prevArtist === nextArtist;
+};
 
 /**
  * Displays the currently playing track from teal.fm with auto-refresh.
@@ -64,7 +80,8 @@ export const CURRENTLY_PLAYING_COLLECTION = "fm.teal.alpha.actor.status";
  * @param fallback - Node rendered before the first load begins.
  * @param loadingIndicator - Node rendered while the status is loading.
  * @param colorScheme - Preferred color scheme for theming the renderer.
- * @param autoRefresh - When true (default), refreshes album art and streaming platform links every 15 seconds.
+ * @param autoRefresh - When true (default), refreshes the record every 15 seconds (or custom interval).
+ * @param refreshInterval - Custom refresh interval in milliseconds. Defaults to 15000 (15 seconds).
  * @returns A JSX subtree representing the currently playing track with loading states handled.
  */
 export const CurrentlyPlaying: React.FC<CurrentlyPlayingProps> = React.memo(({
@@ -76,6 +93,7 @@ export const CurrentlyPlaying: React.FC<CurrentlyPlayingProps> = React.memo(({
 	loadingIndicator,
 	colorScheme,
 	autoRefresh = true,
+	refreshInterval = 15000,
 }) => {
 	// Resolve handle from DID
 	const { handle } = useDidResolution(did);
@@ -92,9 +110,7 @@ export const CurrentlyPlaying: React.FC<CurrentlyPlayingProps> = React.memo(({
 			colorScheme={colorScheme}
 			did={did}
 			rkey={rkey}
-			autoRefresh={autoRefresh}
 			label="CURRENTLY PLAYING"
-			refreshInterval={15000}
 			handle={handle}
 		/>
 	);
@@ -118,6 +134,8 @@ export const CurrentlyPlaying: React.FC<CurrentlyPlayingProps> = React.memo(({
 			renderer={Wrapped}
 			fallback={fallback}
 			loadingIndicator={loadingIndicator}
+			refreshInterval={autoRefresh ? refreshInterval : undefined}
+			compareRecords={compareTealRecords}
 		/>
 	);
 });
