@@ -18,6 +18,7 @@ export * from "./components/TangledRepo";
 export * from "./components/TangledString";
 export * from "./components/CurrentlyPlaying";
 export * from "./components/LastPlayed";
+export * from "./components/SongHistoryList";
 
 // Hooks
 export * from "./hooks/useAtProtoRecord";
