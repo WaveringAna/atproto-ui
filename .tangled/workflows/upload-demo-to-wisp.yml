@@ -1,0 +1,33 @@
+when:
+  - event: ['push']
+    branch: ['main']
+  - event: ['manual']
+engine: 'nixery'
+clone:
+  skip: false
+  depth: 1
+  submodules: false
+dependencies:
+  github:NixOS/nixpkgs/nixpkgs-unstable:
+    - bun:
+
+environment:
+  SITE_PATH: 'demo'
+  SITE_NAME: 'atproto-ui'
+  WISP_HANDLE: 'ana.pds.nkp.pet'
+
+steps:
+  - name: build demo
+    command: |
+      export PATH="$HOME/.nix-profile/bin:$PATH"
+      bun run build:demo
+
+  - name: upload to wisp
+    command: |
+      curl https://sites.wisp.place/did:plc:ttdrpj45ibqunmfhdsb4zdwq/wisp-cli-binaries/wisp-cli-aarch64-linux -o wisp-cli
+      chmod +x wisp-cli
+      ./wisp-cli \
+        "$WISP_HANDLE" \
+        --path "$SITE_PATH" \
+        --site "$SITE_NAME" \
+        --password "$WISP_APP_PASSWORD"
