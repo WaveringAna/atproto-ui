@@ -90,10 +90,10 @@ export const TangledRepoRenderer: React.FC<TangledRepoRendererProps> = ({
 		);
 	if (loading && !record) return <div role="status" aria-live="polite" style={{ padding: 8 }}>Loading…</div>;
 
-	// Construct the canonical URL: tangled.org/@[did]/[repo-name]
+	// Construct the canonical URL: tangled.org/[did]/[repo-name]
 	const viewUrl =
 		canonicalUrl ??
-		`${tangledBaseUrl}/@${did}/${encodeURIComponent(record.name)}`;
+		`${tangledBaseUrl}/${did}/${encodeURIComponent(record.name)}`;
 
 	const tangledIcon = (
 		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 25 25" style={{ display: "block" }}>
