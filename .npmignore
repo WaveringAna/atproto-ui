@@ -1,0 +1,22 @@
+# Demo and development files
+demo/
+src/
+index.html
+
+# Build configuration
+vite.config.ts
+vite.config.d.ts
+tsconfig.app.json
+tsconfig.node.json
+eslint.config.js
+tsconfig.lib.tsbuildinfo
+
+# Dependencies
+node_modules/
+package-lock.json
+bun.lock
+
+CLAUDE.md
+
+# Output directory 
+lib/
