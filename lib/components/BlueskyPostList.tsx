@@ -117,6 +117,7 @@ export const BlueskyPostList: React.FC<BlueskyPostListProps> = React.memo(({
 						record={record.value}
 						rkey={record.rkey}
 						did={actorPath}
+						uri={record.uri}
 						reason={record.reason}
 						replyParent={record.replyParent}
 						hasDivider={idx < records.length - 1}
@@ -203,6 +204,7 @@ interface ListRowProps {
 	record: FeedPostRecord;
 	rkey: string;
 	did: string;
+	uri?: string;
 	reason?: AuthorFeedReason;
 	replyParent?: ReplyParentInfo;
 	hasDivider: boolean;
@@ -212,6 +214,7 @@ const ListRow: React.FC<ListRowProps> = ({
 	record,
 	rkey,
 	did,
+	uri,
 	reason,
 	replyParent,
 	hasDivider,
@@ -224,10 +227,22 @@ const ListRow: React.FC<ListRowProps> = ({
 	const absolute = record.createdAt
 		? new Date(record.createdAt).toLocaleString()
 		: undefined;
-	const href = `${blueskyAppBaseUrl}/profile/${did}/post/${rkey}`;
+
+	// Parse the URI to get the actual post's DID and rkey
+	// This handles reposts correctly by linking to the original post
+	const parsedUri = uri ? parseAtUri(uri) : undefined;
+	const postDid = parsedUri?.did ?? did;
+	const postRkey = parsedUri?.rkey ?? rkey;
+	const href = `${blueskyAppBaseUrl}/profile/${postDid}/post/${postRkey}`;
+
+	// Resolve the original post author's handle for reposts
+	const { handle: originalAuthorHandle } = useDidResolution(
+		reason?.$type === "app.bsky.feed.defs#reasonRepost" ? postDid : undefined,
+	);
+
 	const repostLabel =
 		reason?.$type === "app.bsky.feed.defs#reasonRepost"
-			? `${formatActor(reason.by) ?? "Someone"} reposted`
+			? `${formatActor(reason.by) ?? "Someone"} reposted @${originalAuthorHandle ?? formatDid(postDid)}`
 			: undefined;
 	const parentUri = replyParent?.uri ?? record.reply?.parent?.uri;
 	const parentDid =
@@ -236,11 +251,13 @@ const ListRow: React.FC<ListRowProps> = ({
 	const { handle: resolvedReplyHandle } = useDidResolution(
 		replyParent?.author?.handle ? undefined : parentDid,
 	);
-	const replyLabel = formatReplyTarget(
+	const replyTarget = formatReplyTarget(
 		parentUri,
 		replyParent,
 		resolvedReplyHandle,
 	);
+
+	const isReply = !!replyTarget;
 
 	const postPreview = text.slice(0, 100);
 	const ariaLabel = text
@@ -248,30 +265,41 @@ const ListRow: React.FC<ListRowProps> = ({
 		: `Post by ${did}`;
 
 	return (
-		<a
-			href={href}
-			target="_blank"
-			rel="noopener noreferrer"
-			aria-label={ariaLabel}
+		<div
 			style={{
-				...listStyles.row,
-				color: `var(--atproto-color-text)`,
+				...listStyles.rowContainer,
 				borderBottom: hasDivider
 					? `1px solid var(--atproto-color-border)`
 					: "none",
+				borderLeft: isReply
+					? `3px solid #1185FE`
+					: "3px solid transparent",
 			}}
 		>
 			{repostLabel && (
-				<span style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
+				<div style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
 					{repostLabel}
-				</span>
+				</div>
 			)}
-			{replyLabel && (
-				<span style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
-					{replyLabel}
-				</span>
+			{isReply && (
+				<div style={listStyles.replyHeader}>
+					<span style={{ ...listStyles.replyArrow, color: `#1185FE` }}>
+						↩
+					</span>
+					<span style={{ ...listStyles.replyText, color: `var(--atproto-color-text-secondary)` }}>
+						replying to {replyTarget}
+					</span>
+					{relative && (
+						<span
+							style={{ ...listStyles.rowTime, color: `var(--atproto-color-text-secondary)`, marginLeft: "auto" }}
+							title={absolute}
+						>
+							{relative}
+						</span>
+					)}
+				</div>
 			)}
-			{relative && (
+			{!isReply && relative && (
 				<span
 					style={{ ...listStyles.rowTime, color: `var(--atproto-color-text-secondary)` }}
 					title={absolute}
@@ -279,23 +307,34 @@ const ListRow: React.FC<ListRowProps> = ({
 					{relative}
 				</span>
 			)}
-			{text && (
-				<p style={{ ...listStyles.rowBody, color: `var(--atproto-color-text)` }}>
-					{text}
-				</p>
-			)}
-			{!text && (
-				<p
-					style={{
-						...listStyles.rowBody,
-						color: `var(--atproto-color-text)`,
-						fontStyle: "italic",
-					}}
-				>
-					No text content.
-				</p>
-			)}
-		</a>
+			<a
+				href={href}
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label={ariaLabel}
+				style={{
+					...listStyles.rowLink,
+					color: `var(--atproto-color-text)`,
+				}}
+			>
+				{text && (
+					<p style={{ ...listStyles.rowBody, color: `var(--atproto-color-text)` }}>
+						{text}
+					</p>
+				)}
+				{!text && (
+					<p
+						style={{
+							...listStyles.rowBody,
+							color: `var(--atproto-color-text)`,
+							fontStyle: "italic",
+						}}
+					>
+						No text content.
+					</p>
+				)}
+			</a>
+		</div>
 	);
 };
 
@@ -388,13 +427,31 @@ const listStyles = {
 		fontSize: 13,
 		textAlign: "center",
 	} satisfies React.CSSProperties,
-	row: {
+	rowContainer: {
 		padding: "18px",
-		textDecoration: "none",
 		display: "flex",
 		flexDirection: "column",
 		gap: 6,
 		transition: "background-color 120ms ease",
+	} satisfies React.CSSProperties,
+	rowLink: {
+		textDecoration: "none",
+		display: "block",
+	} satisfies React.CSSProperties,
+	replyHeader: {
+		display: "flex",
+		alignItems: "center",
+		gap: 6,
+		fontSize: 12,
+		fontWeight: 500,
+	} satisfies React.CSSProperties,
+	replyArrow: {
+		fontSize: 14,
+		fontWeight: 600,
+	} satisfies React.CSSProperties,
+	replyText: {
+		fontSize: 12,
+		fontWeight: 500,
 	} satisfies React.CSSProperties,
 	rowHeader: {
 		display: "flex",
@@ -496,7 +553,7 @@ function formatReplyTarget(
 	const directHandle = feedParent?.author?.handle;
 	const handle = directHandle ?? resolvedHandle;
 	if (handle) {
-		return `Replying to @${handle}`;
+		return `@${handle}`;
 	}
 	const parentDid = feedParent?.author?.did;
 	const targetUri = feedParent?.uri ?? parentUri;
@@ -504,5 +561,5 @@ function formatReplyTarget(
 	const parsed = parseAtUri(targetUri);
 	const did = parentDid ?? parsed?.did;
 	if (!did) return undefined;
-	return `Replying to @${formatDid(did)}`;
+	return `@${formatDid(did)}`;
 }
