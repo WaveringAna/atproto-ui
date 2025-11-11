@@ -62,7 +62,14 @@ export default defineConfig({
             output: {
                 preserveModules: true,
                 preserveModulesRoot: 'lib',
-                entryFileNames: '[name].js'
+                entryFileNames: '[name].js',
+                assetFileNames: (assetInfo) => {
+                    // Output CSS to root of lib-dist as styles.css
+                    if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+                        return 'styles.css';
+                    }
+                    return 'assets/[name][extname]';
+                }
             }
         },
     }
