@@ -40,6 +40,7 @@ export default defineConfig({
         // Library build configuration
         lib: {
             entry: resolve(__dirname, 'lib/index.ts'),
+            cssFileName: resolve(__dirname, 'lib/styles.css'),
             name: 'atproto-ui',
             formats: ['es'],
             fileName: 'atproto-ui'
@@ -61,17 +62,8 @@ export default defineConfig({
             output: {
                 preserveModules: true,
                 preserveModulesRoot: 'lib',
-                entryFileNames: '[name].js',
-                assetFileNames: (assetInfo) => {
-                    // Output CSS to root of lib-dist as styles.css
-                    if (assetInfo.name && assetInfo.name.endsWith('.css')) {
-                        return 'styles.css';
-                    }
-                    return 'assets/[name][extname]';
-                }
+                entryFileNames: '[name].js'
             }
         },
-        sourcemap: false,
-        minify: false
     }
 });
