@@ -299,7 +299,6 @@ const ListRow: React.FC<ListRowProps> = ({
 
 	const isReply = !!parentUri;
 	const replyTargetHandle = replyParent?.author?.handle ?? parentHandle;
-	const replyTargetName = parentDisplayName ?? replyTargetHandle ?? formatDid(parentDid ?? "");
 
 	const postPreview = text.slice(0, 100);
 	const ariaLabel = text
