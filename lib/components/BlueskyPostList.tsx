@@ -4,11 +4,17 @@ import {
 	type AuthorFeedReason,
 	type ReplyParentInfo,
 } from "../hooks/usePaginatedRecords";
-import type { FeedPostRecord } from "../types/bluesky";
+import type { FeedPostRecord, ProfileRecord } from "../types/bluesky";
 import { useDidResolution } from "../hooks/useDidResolution";
 import { BlueskyIcon } from "./BlueskyIcon";
 import { parseAtUri } from "../utils/at-uri";
 import { useAtProto } from "../providers/AtProtoProvider";
+import { useAtProtoRecord } from "../hooks/useAtProtoRecord";
+import { useBlob } from "../hooks/useBlob";
+import { getAvatarCid } from "../utils/profile";
+import { isBlobWithCdn } from "../utils/blob";
+import { BLUESKY_PROFILE_COLLECTION } from "./BlueskyProfile";
+import { RichText as BlueskyRichText } from "./RichText";
 
 /**
  * Options for rendering a paginated list of Bluesky posts.
@@ -229,111 +235,205 @@ const ListRow: React.FC<ListRowProps> = ({
 		: undefined;
 
 	// Parse the URI to get the actual post's DID and rkey
-	// This handles reposts correctly by linking to the original post
 	const parsedUri = uri ? parseAtUri(uri) : undefined;
 	const postDid = parsedUri?.did ?? did;
 	const postRkey = parsedUri?.rkey ?? rkey;
 	const href = `${blueskyAppBaseUrl}/profile/${postDid}/post/${postRkey}`;
 
-	// Resolve the original post author's handle for reposts
-	const { handle: originalAuthorHandle } = useDidResolution(
-		reason?.$type === "app.bsky.feed.defs#reasonRepost" ? postDid : undefined,
+	// Author profile and avatar
+	const { handle: authorHandle } = useDidResolution(postDid);
+	const { record: authorProfile } = useAtProtoRecord<ProfileRecord>({
+		did: postDid,
+		collection: BLUESKY_PROFILE_COLLECTION,
+		rkey: "self",
+	});
+	const authorDisplayName = authorProfile?.displayName;
+	const authorAvatar = authorProfile?.avatar;
+	const authorAvatarCdnUrl = isBlobWithCdn(authorAvatar) ? authorAvatar.cdnUrl : undefined;
+	const authorAvatarCid = authorAvatarCdnUrl ? undefined : getAvatarCid(authorProfile);
+	const { url: authorAvatarUrl } = useBlob(
+		postDid,
+		authorAvatarCid,
 	);
+	const finalAuthorAvatarUrl = authorAvatarCdnUrl ?? authorAvatarUrl;
 
-	const repostLabel =
-		reason?.$type === "app.bsky.feed.defs#reasonRepost"
-			? `${formatActor(reason.by) ?? "Someone"} reposted @${originalAuthorHandle ?? formatDid(postDid)}`
-			: undefined;
+	// Repost metadata
+	const isRepost = reason?.$type === "app.bsky.feed.defs#reasonRepost";
+	const reposterDid = reason?.by?.did;
+	const { handle: reposterHandle } = useDidResolution(reposterDid);
+	const { record: reposterProfile } = useAtProtoRecord<ProfileRecord>({
+		did: reposterDid,
+		collection: BLUESKY_PROFILE_COLLECTION,
+		rkey: "self",
+	});
+	const reposterDisplayName = reposterProfile?.displayName;
+	const reposterAvatar = reposterProfile?.avatar;
+	const reposterAvatarCdnUrl = isBlobWithCdn(reposterAvatar) ? reposterAvatar.cdnUrl : undefined;
+	const reposterAvatarCid = reposterAvatarCdnUrl ? undefined : getAvatarCid(reposterProfile);
+	const { url: reposterAvatarUrl } = useBlob(
+		reposterDid,
+		reposterAvatarCid,
+	);
+	const finalReposterAvatarUrl = reposterAvatarCdnUrl ?? reposterAvatarUrl;
+
+	// Reply metadata
 	const parentUri = replyParent?.uri ?? record.reply?.parent?.uri;
-	const parentDid =
-		replyParent?.author?.did ??
-		(parentUri ? parseAtUri(parentUri)?.did : undefined);
-	const { handle: resolvedReplyHandle } = useDidResolution(
+	const parentDid = replyParent?.author?.did ?? (parentUri ? parseAtUri(parentUri)?.did : undefined);
+	const { handle: parentHandle } = useDidResolution(
 		replyParent?.author?.handle ? undefined : parentDid,
 	);
-	const replyTarget = formatReplyTarget(
-		parentUri,
-		replyParent,
-		resolvedReplyHandle,
+	const { record: parentProfile } = useAtProtoRecord<ProfileRecord>({
+		did: parentDid,
+		collection: BLUESKY_PROFILE_COLLECTION,
+		rkey: "self",
+	});
+	const parentDisplayName = parentProfile?.displayName;
+	const parentAvatar = parentProfile?.avatar;
+	const parentAvatarCdnUrl = isBlobWithCdn(parentAvatar) ? parentAvatar.cdnUrl : undefined;
+	const parentAvatarCid = parentAvatarCdnUrl ? undefined : getAvatarCid(parentProfile);
+	const { url: parentAvatarUrl } = useBlob(
+		parentDid,
+		parentAvatarCid,
 	);
+	const finalParentAvatarUrl = parentAvatarCdnUrl ?? parentAvatarUrl;
 
-	const isReply = !!replyTarget;
+	const isReply = !!parentUri;
+	const replyTargetHandle = replyParent?.author?.handle ?? parentHandle;
+	const replyTargetName = parentDisplayName ?? replyTargetHandle ?? formatDid(parentDid ?? "");
 
 	const postPreview = text.slice(0, 100);
 	const ariaLabel = text
-		? `Post by ${did}: ${postPreview}${text.length > 100 ? '...' : ''}`
-		: `Post by ${did}`;
+		? `Post by ${authorDisplayName ?? authorHandle ?? did}: ${postPreview}${text.length > 100 ? "..." : ""}`
+		: `Post by ${authorDisplayName ?? authorHandle ?? did}`;
 
 	return (
 		<div
 			style={{
 				...listStyles.rowContainer,
-				borderBottom: hasDivider
-					? `1px solid var(--atproto-color-border)`
-					: "none",
-				borderLeft: isReply
-					? `3px solid #1185FE`
-					: "3px solid transparent",
+				borderBottom: hasDivider ? `1px solid var(--atproto-color-border)` : "none",
 			}}
 		>
-			{repostLabel && (
-				<div style={{ ...listStyles.rowMeta, color: `var(--atproto-color-text-secondary)` }}>
-					{repostLabel}
+			{isRepost && (
+				<div style={listStyles.repostIndicator}>
+					{finalReposterAvatarUrl && (
+						<img
+							src={finalReposterAvatarUrl}
+							alt=""
+							style={listStyles.repostAvatar}
+						/>
+					)}
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 16 16"
+						fill="none"
+						style={{ flexShrink: 0 }}
+					>
+						<path
+							d="M5.5 3.5L3 6L5.5 8.5M3 6H10C11.1046 6 12 6.89543 12 8V8.5M10.5 12.5L13 10L10.5 7.5M13 10H6C4.89543 10 4 9.10457 4 8V7.5"
+							stroke="var(--atproto-color-text-secondary)"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					</svg>
+					<span style={{ ...listStyles.repostText, color: "var(--atproto-color-text-secondary)" }}>
+						{reposterDisplayName ?? reposterHandle ?? "Someone"} reposted
+					</span>
 				</div>
 			)}
+
 			{isReply && (
-				<div style={listStyles.replyHeader}>
-					<span style={{ ...listStyles.replyArrow, color: `#1185FE` }}>
-						↩
+				<div style={listStyles.replyIndicator}>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 14 14"
+						fill="none"
+						style={{ flexShrink: 0 }}
+					>
+						<path
+							d="M11 7H3M3 7L7 3M3 7L7 11"
+							stroke="#1185FE"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					</svg>
+					<span style={{ ...listStyles.replyText, color: "var(--atproto-color-text-secondary)" }}>
+						Replying to
 					</span>
-					<span style={{ ...listStyles.replyText, color: `var(--atproto-color-text-secondary)` }}>
-						replying to {replyTarget}
+					{finalParentAvatarUrl && (
+						<img
+							src={finalParentAvatarUrl}
+							alt=""
+							style={listStyles.replyAvatar}
+						/>
+					)}
+					<span style={{ color: "#1185FE", fontWeight: 600 }}>
+						@{replyTargetHandle ?? formatDid(parentDid ?? "")}
 					</span>
-					{relative && (
+				</div>
+			)}
+
+			<div style={listStyles.postContent}>
+				<div style={listStyles.avatarContainer}>
+					{finalAuthorAvatarUrl ? (
+						<img
+							src={finalAuthorAvatarUrl}
+							alt={authorDisplayName ?? authorHandle ?? "User avatar"}
+							style={listStyles.avatar}
+						/>
+					) : (
+						<div style={listStyles.avatarPlaceholder}>
+							{(authorDisplayName ?? authorHandle ?? "?")[0].toUpperCase()}
+						</div>
+					)}
+				</div>
+
+				<div style={listStyles.postMain}>
+					<div style={listStyles.postHeader}>
+						<a
+							href={`${blueskyAppBaseUrl}/profile/${postDid}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{ ...listStyles.authorName, color: "var(--atproto-color-text)" }}
+							onClick={(e) => e.stopPropagation()}
+						>
+							{authorDisplayName ?? authorHandle ?? formatDid(postDid)}
+						</a>
+						<span style={{ ...listStyles.authorHandle, color: "var(--atproto-color-text-secondary)" }}>
+							@{authorHandle ?? formatDid(postDid)}
+						</span>
+						<span style={{ ...listStyles.separator, color: "var(--atproto-color-text-secondary)" }}>·</span>
 						<span
-							style={{ ...listStyles.rowTime, color: `var(--atproto-color-text-secondary)`, marginLeft: "auto" }}
+							style={{ ...listStyles.timestamp, color: "var(--atproto-color-text-secondary)" }}
 							title={absolute}
 						>
 							{relative}
 						</span>
-					)}
-				</div>
-			)}
-			{!isReply && relative && (
-				<span
-					style={{ ...listStyles.rowTime, color: `var(--atproto-color-text-secondary)` }}
-					title={absolute}
-				>
-					{relative}
-				</span>
-			)}
-			<a
-				href={href}
-				target="_blank"
-				rel="noopener noreferrer"
-				aria-label={ariaLabel}
-				style={{
-					...listStyles.rowLink,
-					color: `var(--atproto-color-text)`,
-				}}
-			>
-				{text && (
-					<p style={{ ...listStyles.rowBody, color: `var(--atproto-color-text)` }}>
-						{text}
-					</p>
-				)}
-				{!text && (
-					<p
-						style={{
-							...listStyles.rowBody,
-							color: `var(--atproto-color-text)`,
-							fontStyle: "italic",
-						}}
+					</div>
+
+					<a
+						href={href}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label={ariaLabel}
+						style={{ ...listStyles.postLink, color: "var(--atproto-color-text)" }}
 					>
-						No text content.
-					</p>
-				)}
-			</a>
+						{text && (
+							<p style={listStyles.postText}>
+								<BlueskyRichText text={text} facets={record.facets} />
+							</p>
+						)}
+						{!text && (
+							<p style={{ ...listStyles.postText, fontStyle: "italic", color: "var(--atproto-color-text-secondary)" }}>
+								No text content
+							</p>
+						)}
+					</a>
+				</div>
+			</div>
 		</div>
 	);
 };
@@ -399,7 +499,6 @@ const listStyles = {
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "center",
-		//background: 'rgba(17, 133, 254, 0.14)',
 		borderRadius: "50%",
 	} satisfies React.CSSProperties,
 	headerText: {
@@ -428,51 +527,124 @@ const listStyles = {
 		textAlign: "center",
 	} satisfies React.CSSProperties,
 	rowContainer: {
-		padding: "18px",
+		padding: "16px",
+		display: "flex",
+		flexDirection: "column",
+		gap: 8,
+		transition: "background-color 120ms ease",
+		position: "relative",
+	} satisfies React.CSSProperties,
+	repostIndicator: {
+		display: "flex",
+		alignItems: "center",
+		gap: 8,
+		fontSize: 13,
+		fontWeight: 500,
+		paddingLeft: 8,
+		marginBottom: 4,
+	} satisfies React.CSSProperties,
+	repostAvatar: {
+		width: 16,
+		height: 16,
+		borderRadius: "50%",
+		objectFit: "cover",
+	} satisfies React.CSSProperties,
+	repostText: {
+		fontSize: 13,
+		fontWeight: 500,
+	} satisfies React.CSSProperties,
+	replyIndicator: {
+		display: "flex",
+		alignItems: "center",
+		gap: 8,
+		fontSize: 13,
+		fontWeight: 500,
+		paddingLeft: 8,
+		marginBottom: 4,
+	} satisfies React.CSSProperties,
+	replyAvatar: {
+		width: 16,
+		height: 16,
+		borderRadius: "50%",
+		objectFit: "cover",
+	} satisfies React.CSSProperties,
+	replyText: {
+		fontSize: 13,
+		fontWeight: 500,
+	} satisfies React.CSSProperties,
+	postContent: {
+		display: "flex",
+		gap: 12,
+	} satisfies React.CSSProperties,
+	avatarContainer: {
+		flexShrink: 0,
+	} satisfies React.CSSProperties,
+	avatar: {
+		width: 48,
+		height: 48,
+		borderRadius: "50%",
+		objectFit: "cover",
+	} satisfies React.CSSProperties,
+	avatarPlaceholder: {
+		width: 48,
+		height: 48,
+		borderRadius: "50%",
+		background: "var(--atproto-color-bg-elevated)",
+		color: "var(--atproto-color-text-secondary)",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		fontSize: 18,
+		fontWeight: 600,
+	} satisfies React.CSSProperties,
+	postMain: {
+		flex: 1,
+		minWidth: 0,
 		display: "flex",
 		flexDirection: "column",
 		gap: 6,
-		transition: "background-color 120ms ease",
 	} satisfies React.CSSProperties,
-	rowLink: {
+	postHeader: {
+		display: "flex",
+		alignItems: "baseline",
+		gap: 6,
+		flexWrap: "wrap",
+	} satisfies React.CSSProperties,
+	authorName: {
+		fontWeight: 700,
+		fontSize: 15,
+		textDecoration: "none",
+		maxWidth: "200px",
+		overflow: "hidden",
+		textOverflow: "ellipsis",
+		whiteSpace: "nowrap",
+	} satisfies React.CSSProperties,
+	authorHandle: {
+		fontSize: 15,
+		fontWeight: 400,
+		maxWidth: "150px",
+		overflow: "hidden",
+		textOverflow: "ellipsis",
+		whiteSpace: "nowrap",
+	} satisfies React.CSSProperties,
+	separator: {
+		fontSize: 15,
+		fontWeight: 400,
+	} satisfies React.CSSProperties,
+	timestamp: {
+		fontSize: 15,
+		fontWeight: 400,
+	} satisfies React.CSSProperties,
+	postLink: {
 		textDecoration: "none",
 		display: "block",
 	} satisfies React.CSSProperties,
-	replyHeader: {
-		display: "flex",
-		alignItems: "center",
-		gap: 6,
-		fontSize: 12,
-		fontWeight: 500,
-	} satisfies React.CSSProperties,
-	replyArrow: {
-		fontSize: 14,
-		fontWeight: 600,
-	} satisfies React.CSSProperties,
-	replyText: {
-		fontSize: 12,
-		fontWeight: 500,
-	} satisfies React.CSSProperties,
-	rowHeader: {
-		display: "flex",
-		gap: 6,
-		alignItems: "baseline",
-		fontSize: 13,
-	} satisfies React.CSSProperties,
-	rowTime: {
-		fontSize: 12,
-		fontWeight: 500,
-	} satisfies React.CSSProperties,
-	rowMeta: {
-		fontSize: 12,
-		fontWeight: 500,
-		letterSpacing: "0.6px",
-	} satisfies React.CSSProperties,
-	rowBody: {
+	postText: {
 		margin: 0,
 		whiteSpace: "pre-wrap",
-		fontSize: 14,
-		lineHeight: 1.45,
+		fontSize: 15,
+		lineHeight: 1.5,
+		wordBreak: "break-word",
 	} satisfies React.CSSProperties,
 	footer: {
 		display: "flex",
@@ -481,18 +653,6 @@ const listStyles = {
 		padding: "12px 18px",
 		borderTop: "1px solid transparent",
 		fontSize: 13,
-	} satisfies React.CSSProperties,
-	navButton: {
-		border: "none",
-		borderRadius: 999,
-		padding: "6px 12px",
-		fontSize: 13,
-		fontWeight: 500,
-		background: "transparent",
-		display: "flex",
-		alignItems: "center",
-		gap: 4,
-		transition: "background-color 120ms ease",
 	} satisfies React.CSSProperties,
 	pageChips: {
 		display: "flex",
@@ -537,29 +697,3 @@ const listStyles = {
 };
 
 export default BlueskyPostList;
-
-function formatActor(actor?: { handle?: string; did?: string }) {
-	if (!actor) return undefined;
-	if (actor.handle) return `@${actor.handle}`;
-	if (actor.did) return `@${formatDid(actor.did)}`;
-	return undefined;
-}
-
-function formatReplyTarget(
-	parentUri?: string,
-	feedParent?: ReplyParentInfo,
-	resolvedHandle?: string,
-) {
-	const directHandle = feedParent?.author?.handle;
-	const handle = directHandle ?? resolvedHandle;
-	if (handle) {
-		return `@${handle}`;
-	}
-	const parentDid = feedParent?.author?.did;
-	const targetUri = feedParent?.uri ?? parentUri;
-	if (!targetUri) return undefined;
-	const parsed = parseAtUri(targetUri);
-	const did = parentDid ?? parsed?.did;
-	if (!did) return undefined;
-	return `@${formatDid(did)}`;
-}
