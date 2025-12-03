@@ -287,7 +287,6 @@ const ListRow: React.FC<ListRowProps> = ({
 		collection: BLUESKY_PROFILE_COLLECTION,
 		rkey: "self",
 	});
-	const parentDisplayName = parentProfile?.displayName;
 	const parentAvatar = parentProfile?.avatar;
 	const parentAvatarCdnUrl = isBlobWithCdn(parentAvatar) ? parentAvatar.cdnUrl : undefined;
 	const parentAvatarCid = parentAvatarCdnUrl ? undefined : getAvatarCid(parentProfile);
