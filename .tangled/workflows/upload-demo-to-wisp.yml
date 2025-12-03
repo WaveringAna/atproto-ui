@@ -33,7 +33,7 @@ steps:
       BUILD_TARGET=demo bun node_modules/.bin/vite build
   - name: upload to wisp
     command: |
-      curl https://sites.wisp.place/nekomimi.pet/wisp-cli-binaries/wisp-cli-x86-linux -o wisp-cli
+      curl https://sites.wisp.place/nekomimi.pet/wisp-cli-binaries/wisp-cli-x86-64-linux -o wisp-cli
       chmod +x wisp-cli
       ./wisp-cli \
         "$WISP_HANDLE" \
